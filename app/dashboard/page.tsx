@@ -5,7 +5,7 @@ import { AdminShell } from "@/components/AdminShell";
 import { getStore } from "@/lib/store";
 
 export default function Page() {
-  const [s, setS] = useState(getStore());
+  const [s, setS] = useState(() => getStore());
   useEffect(() => setS(getStore()), []);
 
   const todayIn = s.recharges.filter((r) => r.status === "paid").reduce((n, r) => n + r.amount, 0);

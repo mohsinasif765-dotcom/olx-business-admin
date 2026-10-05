@@ -38,6 +38,7 @@ export function getAdminUsername() {
 }
 
 export function isAdminLoggedIn() {
+  if (typeof window === "undefined") return false;
   return window.localStorage.getItem(SESSION_KEY) === "1";
 }
 

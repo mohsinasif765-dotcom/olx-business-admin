@@ -220,8 +220,9 @@ const seed: Store = {
 };
 
 function load(): Store {
-  const raw = window.localStorage.getItem(KEY);
   const base = structuredClone(seed);
+  if (typeof window === "undefined") return base;
+  const raw = window.localStorage.getItem(KEY);
   if (!raw) {
     window.localStorage.setItem(KEY, JSON.stringify(base));
     return base;
@@ -258,6 +259,7 @@ export function stamp() {
 }
 
 function save(store: Store) {
+  if (typeof window === "undefined") return;
   window.localStorage.setItem(KEY, JSON.stringify(store));
 }
 
