@@ -1,36 +1,44 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# OLX Business Admin
 
-## Getting Started
+Ops console for the OLX Business member app (`../olx-business`). **No database yet** — data lives in browser `localStorage` (`lib/store.ts`). Replace that file with API calls when you connect Postgres/Supabase/Prisma.
 
-First, run the development server:
+## Run
 
 ```bash
+cd olx-business-admin
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3001](http://localhost:3001)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| | |
+|---|---|
+| Username | `admin` |
+| Password | `olx2026` |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Member app stays on port 3000.
 
-## Learn More
+## What the client can do alone
 
-To learn more about Next.js, take a look at the following resources:
+- Dashboard totals and large-withdraw alerts
+- Users: search, freeze/unfreeze, ban, credit/debit invest or brokerage with reason, reset password queues
+- Recharges: approve (credits invest) / reject
+- Withdrawals: approve / reject / mark paid + CSV
+- Transfers history
+- VIP plans: edit range, income, days, rebate, hashpower, enable/disable
+- Team commission % LEV 1–3
+- Coin deposit addresses + min amounts
+- CMS: about, agreement, privacy, FAQ, support, app
+- Settings: flags, fees, daily cap, maintenance, Telegram
+- Commands: commission recalc, expire dry-run, yield batch, CSV exports
+- Audit log of admin actions
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+No impersonation. No wipe-database button.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Later: database
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Add Prisma/Supabase in this folder.
+2. Keep the same screen payloads.
+3. Swap `getStore` / `patchStore` in `lib/store.ts` for `fetch('/api/...')`.
+4. Hash passwords on the server. Put `DATABASE_URL` in `.env` only.
