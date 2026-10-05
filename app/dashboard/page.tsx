@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AdminShell } from "@/components/AdminShell";
 import { getStore } from "@/lib/store";
@@ -11,16 +12,17 @@ export default function Page() {
   const todayIn = s.recharges.filter((r) => r.status === "paid").reduce((n, r) => n + r.amount, 0);
   const pendingOut = s.withdraws.filter((w) => w.status === "pending");
   const large = pendingOut.filter((w) => w.amount >= 50);
+  const livePackages = s.vips.filter((p) => p.enabled);
 
   const cards = [
     { label: "Members", value: String(s.users.length) },
     { label: "Package members", value: String(s.users.filter((u) => u.vip !== "—").length) },
+    { label: "Live car packages", value: String(livePackages.length) },
     { label: "Invest total", value: `$${s.users.reduce((n, u) => n + u.invest, 0).toFixed(2)}` },
     { label: "Brokerage total", value: `$${s.users.reduce((n, u) => n + u.brokerage, 0).toFixed(2)}` },
     { label: "Pending recharge", value: String(s.recharges.filter((r) => r.status === "pending").length) },
     { label: "Pending withdraw", value: String(pendingOut.length) },
     { label: "Paid deposits", value: `$${todayIn.toFixed(2)}` },
-    { label: "Frozen / banned", value: String(s.users.filter((u) => u.status !== "active").length) },
   ];
 
   return (
@@ -33,6 +35,27 @@ export default function Page() {
           </article>
         ))}
       </div>
+      <section className="admin-card mt-4 p-5">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="text-[13px] font-semibold text-[#9aa0ae]">Car packages</h2>
+          <Link href="/vip" className="text-[12px] font-medium text-[#a5b4fc]">
+            Manage packages →
+          </Link>
+        </div>
+        <div className="grid gap-2 md:grid-cols-2">
+          {livePackages.map((plan) => (
+            <div key={plan.id} className="flex items-center justify-between rounded-lg border border-[#1c1d24] px-3 py-2.5">
+              <div>
+                <p className="text-[13px] font-medium text-[#eceef4]">{plan.name}</p>
+                <p className="text-[12px] text-[#6b6f7c]">
+                  {plan.kind === "used" ? "Used" : "New"} · {plan.range} · {plan.days} days
+                </p>
+              </div>
+              <p className="text-[13px] text-[#6ee7b7]">{plan.income}</p>
+            </div>
+          ))}
+        </div>
+      </section>
       <div className="mt-4 grid gap-3 lg:grid-cols-2">
         <section className="admin-card p-5">
           <h2 className="mb-3 text-[13px] font-semibold text-[#9aa0ae]">Alerts</h2>

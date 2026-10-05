@@ -21,18 +21,13 @@ Member app stays on port 3000.
 
 ## What the client can do alone
 
-- Dashboard totals and large-withdraw alerts
-- Users: search, freeze/unfreeze, ban, credit/debit invest or brokerage with reason, reset password queues
-- Recharges: approve (credits invest) / reject
-- Withdrawals: approve / reject / mark paid + CSV
-- Transfers history
-- VIP plans: edit range, income, days, rebate, hashpower, enable/disable
+- Dashboard: members, live car packages, deposits, withdrawals
+- Users: search, freeze/unfreeze, ban, credit/debit invest or brokerage
+- Recharges / withdrawals in USDT
+- **Car packages:** New/Used, photo upload, invest range, expected return, term, publish to member Cars
 - Team commission % LEV 1–3
-- Coin deposit addresses + min amounts
-- CMS: about, agreement, privacy, FAQ, support, app
-- Settings: flags, fees, daily cap, maintenance, Telegram
-- Commands: commission recalc, expire dry-run, yield batch, CSV exports
-- Audit log of admin actions
+- **USDT wallet:** one deposit address (no coin list)
+- CMS, catalog, settings, commands, audit
 
 No impersonation. No wipe-database button.
 

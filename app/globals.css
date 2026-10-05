@@ -109,12 +109,31 @@ body {
   font-size: 13px;
 }
 
+.admin-confirm-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.58);
+}
+
 .admin-confirm {
+  width: min(440px, 100%);
+  margin: 0;
+  padding: 18px 18px 16px;
+  border-radius: 14px;
+  background: #121318;
+  border: 1px solid #2a2b33;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+}
+
+.admin-confirm p {
   margin-bottom: 14px;
-  padding: 14px 16px;
-  border-radius: 12px;
-  background: rgba(245, 158, 11, 0.08);
-  border: 1px solid rgba(245, 158, 11, 0.22);
+  font-size: 14px;
+  line-height: 1.5;
+  color: #e8eaef;
 }
 
 .flag {

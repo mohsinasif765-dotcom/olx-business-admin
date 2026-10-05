@@ -132,7 +132,7 @@ export type Settings = {
 
 const KEY = "olx-admin-v7";
 
-type Store = {
+export type Store = {
   users: UserRow[];
   recharges: OrderRow[];
   withdraws: WithdrawRow[];
