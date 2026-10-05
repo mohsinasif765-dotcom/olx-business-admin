@@ -19,12 +19,31 @@ export function PhotoField({
     if (!file) return;
     setBusy(true);
     const result = await uploadCarPhoto(file);
-    setBusy(false);
-    if (!result.ok) {
+    if (result.ok) {
+      setBusy(false);
+      onChange(result.url);
+      return;
+    }
+    if (file.size > 4 * 1024 * 1024) {
+      setBusy(false);
       onError(result.error);
       return;
     }
-    onChange(result.url);
+    const reader = new FileReader();
+    reader.onload = () => {
+      setBusy(false);
+      const url = typeof reader.result === "string" ? reader.result : "";
+      if (!url.startsWith("data:image/")) {
+        onError(result.error);
+        return;
+      }
+      onChange(url);
+    };
+    reader.onerror = () => {
+      setBusy(false);
+      onError(result.error);
+    };
+    reader.readAsDataURL(file);
   }
 
   return (

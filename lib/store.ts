@@ -227,7 +227,12 @@ function normalizeVip(row: Partial<VipPlan> & { rebate?: string; hashpower?: str
     row.kind === "used" || String(row.rebate || "").toLowerCase().includes("used") ? "used" : "new";
   const rawImage = typeof row.image === "string" ? row.image.trim() : "";
   const image =
-    rawImage && !rawImage.includes("unsplash.com") && (/^https?:\/\//i.test(rawImage) || rawImage.startsWith("/cars/") || rawImage.startsWith("/uploads/"))
+    rawImage &&
+    !rawImage.includes("unsplash.com") &&
+    (/^https?:\/\//i.test(rawImage) ||
+      rawImage.startsWith("data:image/") ||
+      rawImage.startsWith("/cars/") ||
+      rawImage.startsWith("/uploads/"))
       ? rawImage
       : DEFAULT_CAR_IMAGE[kind];
   return {

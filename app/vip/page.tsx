@@ -109,9 +109,21 @@ export default function Page() {
           <input value={days} onChange={(e) => setDays(e.target.value)} className="admin-input" placeholder="30" />
         </div>
       </AddPanel>
-      <p className="mb-4 text-[13px] text-white/50">
-        Enabled packages publish to the member Cars page. Keep the member app on port 3000 while you upload photos.
+      <p className="mb-4 text-[13px] leading-6 text-white/50">
+        Product → Car packages: add name, invest, return, term, then Upload photo. Enabled packages go to the member Cars page.
+        Member app should be running on port 3000 so photos and publish reach it.
       </p>
+      <div className="mb-4">
+        <button
+          type="button"
+          className="admin-btn px-8"
+          onClick={() =>
+            void commit(() => {}, { action: "package_publish", target: "cars" })
+          }
+        >
+          Publish to Cars page
+        </button>
+      </div>
       <div className="grid gap-3 md:grid-cols-2">
         {rows.map((plan) => (
           <article key={JSON.stringify(plan)} className="admin-card space-y-2 overflow-hidden p-0">

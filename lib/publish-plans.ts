@@ -29,11 +29,16 @@ export function toLivePlans(vips: VipPlan[]): LiveCarPlan[] {
 
 export function isPackageImage(value: string) {
   const v = value.trim();
-  return /^https?:\/\//i.test(v) || v.startsWith("/uploads/") || v.startsWith("/cars/");
+  return (
+    /^https?:\/\//i.test(v) ||
+    v.startsWith("data:image/") ||
+    v.startsWith("/uploads/") ||
+    v.startsWith("/cars/")
+  );
 }
 
 export function mediaSrc(path: string) {
-  if (/^https?:\/\//i.test(path)) return path;
+  if (/^https?:\/\//i.test(path) || path.startsWith("data:image/")) return path;
   const base = (process.env.NEXT_PUBLIC_MEMBER_URL || "http://localhost:3000").replace(/\/$/, "");
   return `${base}${path.startsWith("/") ? path : `/${path}`}`;
 }
