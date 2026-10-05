@@ -23,7 +23,7 @@ export default function Page() {
   const [acts, setActs] = useState<ActivityRow[]>([]);
   const [nTitle, setNTitle] = useState("");
   const [nBody, setNBody] = useState("");
-  const [fTab, setFTab] = useState("mining");
+  const [fTab, setFTab] = useState("cars");
   const [fTitle, setFTitle] = useState("");
   const [fBody, setFBody] = useState("");
   const [aTitle, setATitle] = useState("");
@@ -107,7 +107,7 @@ export default function Page() {
       ) : null}
       {tab === "faq" ? (
         <>
-          <AddPanel title="Add FAQ" hint="Help articles for mining, wallet, and about." onSubmit={() => {
+          <AddPanel title="Add FAQ" hint="Help for car packages, wallet, and about." onSubmit={() => {
             if (!fTitle.trim() || !fBody.trim()) {
               toast("Title and body required");
               return;
@@ -121,7 +121,7 @@ export default function Page() {
             toast("FAQ added");
           }}>
             <select value={fTab} onChange={(e) => setFTab(e.target.value)} className="admin-input">
-              <option value="mining">mining</option>
+              <option value="cars">cars</option>
               <option value="wallet">wallet</option>
               <option value="about">about</option>
             </select>

@@ -100,10 +100,10 @@ export default function Page() {
           [
             ["registerOn", "Register"],
             ["loginOn", "Login"],
-            ["rechargeOn", "Recharge"],
+            ["rechargeOn", "Fund wallet"],
             ["withdrawOn", "Withdraw"],
             ["transferOn", "Transfer"],
-            ["miningOn", "Mining"],
+            ["packagesOn", "Car packages"],
           ] as const
         ).map(([key, label]) => (
           <div key={key} className="flag">
@@ -123,12 +123,8 @@ export default function Page() {
             <input type="number" value={s.dailyCap} onChange={(e) => setS({ ...s, dailyCap: Number(e.target.value) })} className="admin-input mt-1" />
           </label>
           <label className="text-[12px] text-white/50">
-            BEP20 fee
-            <input type="number" value={s.bep20Fee} onChange={(e) => setS({ ...s, bep20Fee: Number(e.target.value) })} className="admin-input mt-1" />
-          </label>
-          <label className="text-[12px] text-white/50">
-            TRC20 fee
-            <input type="number" value={s.trc20Fee} onChange={(e) => setS({ ...s, trc20Fee: Number(e.target.value) })} className="admin-input mt-1" />
+            Payout fee (USDT)
+            <input type="number" value={s.payoutFee} onChange={(e) => setS({ ...s, payoutFee: Number(e.target.value) })} className="admin-input mt-1" />
           </label>
         </div>
         <label className="block text-[12px] text-white/50">

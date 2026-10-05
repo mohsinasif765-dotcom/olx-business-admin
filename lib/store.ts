@@ -49,15 +49,22 @@ export type TransferRow = {
   at: string;
 };
 
+export type CarKind = "new" | "used";
+
 export type VipPlan = {
   id: string;
   name: string;
   range: string;
   income: string;
   days: number;
-  rebate: string;
-  hashpower: string;
+  kind: CarKind;
+  image: string;
   enabled: boolean;
+};
+
+export const DEFAULT_CAR_IMAGE: Record<CarKind, string> = {
+  new: "/cars/city-sedan.jpg",
+  used: "/cars/used-compact.jpg",
 };
 
 export type CoinRow = {
@@ -113,10 +120,9 @@ export type Settings = {
   rechargeOn: boolean;
   withdrawOn: boolean;
   transferOn: boolean;
-  miningOn: boolean;
+  packagesOn: boolean;
   minWithdraw: number;
-  bep20Fee: number;
-  trc20Fee: number;
+  payoutFee: number;
   dailyCap: number;
   maintenance: string;
   commissionL1: number;
@@ -124,7 +130,7 @@ export type Settings = {
   commissionL3: number;
 };
 
-const KEY = "olx-admin-v2";
+const KEY = "olx-admin-v7";
 
 type Store = {
   users: UserRow[];
@@ -143,51 +149,49 @@ type Store = {
 
 const seed: Store = {
   users: [
-    { id: "u1", account: "us6414@gmail.com", vip: "VIP 2", invite: "346099", upline: "—", invest: 220, brokerage: 18.5, status: "active", joined: "12 Sep 2026" },
-    { id: "u2", account: "ahmed.k@olx.mail", vip: "VIP 1", invite: "882104", upline: "346099", invest: 100, brokerage: 4.2, status: "active", joined: "20 Sep 2026" },
+    { id: "u1", account: "us6414@gmail.com", vip: "Family SUV", invite: "346099", upline: "—", invest: 220, brokerage: 18.5, status: "active", joined: "12 Sep 2026" },
+    { id: "u2", account: "ahmed.k@olx.mail", vip: "City sedan", invite: "882104", upline: "346099", invest: 100, brokerage: 4.2, status: "active", joined: "20 Sep 2026" },
     { id: "u3", account: "+923001112233", vip: "—", invite: "110293", upline: "346099", invest: 0, brokerage: 0, status: "frozen", joined: "01 Oct 2026" },
   ],
   recharges: [
-    { id: "r1", account: "us6414@gmail.com", amount: 200, network: "BEP20-USDT", txHash: "0x8a…c21", status: "paid", at: "04 Oct 2026 18:12", note: "" },
-    { id: "r2", account: "ahmed.k@olx.mail", amount: 100, network: "TRC20-USDT", txHash: "T9k…aa1", status: "pending", at: "05 Oct 2026 09:40", note: "" },
+    { id: "r1", account: "us6414@gmail.com", amount: 200, network: "USDT", txHash: "pay-8a…c21", status: "paid", at: "04 Oct 2026 18:12", note: "" },
+    { id: "r2", account: "ahmed.k@olx.mail", amount: 100, network: "USDT", txHash: "pay-T9…aa1", status: "pending", at: "05 Oct 2026 09:40", note: "" },
   ],
   withdraws: [
-    { id: "w1", account: "us6414@gmail.com", amount: 50, wallet: "TRC20-USDT", address: "TXk9…a2f1", status: "pending", at: "05 Oct 2026 10:05", note: "" },
-    { id: "w2", account: "ahmed.k@olx.mail", amount: 20, wallet: "BEP20-USDT", address: "0x8c…91b0", status: "paid", at: "03 Oct 2026 14:22", note: "Paid on chain" },
+    { id: "w1", account: "us6414@gmail.com", amount: 50, wallet: "USDT", address: "TXk9…a2f1", status: "pending", at: "05 Oct 2026 10:05", note: "" },
+    { id: "w2", account: "ahmed.k@olx.mail", amount: 20, wallet: "USDT", address: "0x8c…91b0", status: "paid", at: "03 Oct 2026 14:22", note: "Paid" },
   ],
   transfers: [
     { id: "t1", account: "us6414@gmail.com", from: "invest", to: "brokerage", amount: 10, at: "04 Oct 2026 21:02" },
   ],
   vips: [
-    { id: "vip1", name: "VIP 1", range: "$100 – $199.99", income: "$3.00", days: 1, rebate: "0.01%", hashpower: "1.0 GH/s", enabled: true },
-    { id: "vip2", name: "VIP 2", range: "$200 – $499.99", income: "$24.00", days: 3, rebate: "0.01%", hashpower: "8.0 GH/s", enabled: true },
-    { id: "vip3", name: "VIP 3", range: "$500 – $1,999.99", income: "$60.00", days: 5, rebate: "0.01%", hashpower: "20 GH/s", enabled: true },
-    { id: "vip4", name: "VIP 4", range: "$2,000 – $4,999.99", income: "$360.00", days: 7, rebate: "0.02%", hashpower: "120 GH/s", enabled: true },
-    { id: "vip5", name: "VIP 5", range: "$5,000 – $9,999.99", income: "$1,050.00", days: 10, rebate: "0.03%", hashpower: "350 GH/s", enabled: true },
-    { id: "vip6", name: "VIP 6", range: "$10,000 – $19,999.99", income: "$2,400.00", days: 15, rebate: "0.04%", hashpower: "800 GH/s", enabled: true },
-    { id: "vip7", name: "VIP 7", range: "$20,000 – $29,999.99", income: "$6,000.00", days: 20, rebate: "0.05%", hashpower: "2.0 TH/s", enabled: true },
-    { id: "vip8", name: "VIP 8", range: "$30,000+", income: "$10,500.00", days: 30, rebate: "0.06%", hashpower: "3.5 TH/s", enabled: true },
+    { id: "new-city", name: "City sedan", range: "$100 – $199", income: "$3.00", days: 30, kind: "new", image: "/cars/city-sedan.jpg", enabled: true },
+    { id: "new-family", name: "Family SUV", range: "$200 – $499", income: "$24.00", days: 90, kind: "new", image: "/cars/family-suv.jpg", enabled: true },
+    { id: "new-exec", name: "Executive", range: "$500 – $1,999", income: "$60.00", days: 150, kind: "new", image: "/cars/executive.jpg", enabled: true },
+    { id: "new-luxe", name: "Luxury", range: "$2,000 – $4,999", income: "$360.00", days: 180, kind: "new", image: "/cars/luxury.jpg", enabled: true },
+    { id: "used-compact", name: "Certified compact", range: "$100 – $199", income: "$3.00", days: 30, kind: "used", image: "/cars/used-compact.jpg", enabled: true },
+    { id: "used-sedan", name: "Certified sedan", range: "$200 – $499", income: "$24.00", days: 90, kind: "used", image: "/cars/used-sedan.jpg", enabled: true },
+    { id: "used-suv", name: "Certified SUV", range: "$500 – $1,999", income: "$60.00", days: 150, kind: "used", image: "/cars/used-suv.jpg", enabled: true },
+    { id: "used-premium", name: "Certified premium", range: "$2,000 – $4,999", income: "$360.00", days: 180, kind: "used", image: "/cars/used-premium.jpg", enabled: true },
   ],
   coins: [
-    { id: "bep20-usdt", name: "BEP20-USDT", network: "BEP20", min: "10", address: "0xDEMO_BEP20_USDT_ADDRESS_OLX", enabled: true },
-    { id: "trc20-usdt", name: "TRC20-USDT", network: "TRC20", min: "10", address: "TDEMO_TRC20_USDT_ADDRESS_OLX99", enabled: true },
-    { id: "eth-usdt", name: "ETH-USDT", network: "ERC20", min: "20", address: "0xDEMO_ETH_USDT_ADDRESS_OLX99", enabled: true },
+    { id: "usdt", name: "USDT", network: "Wallet", min: "10", address: "OLX-USDT-WALLET-DEMO", enabled: true },
   ],
   cms: [
-    { slug: "about", title: "About Us", body: "OLX Business is a cloud-mining membership platform in Dubai." },
+    { slug: "about", title: "About Us", body: "OLX Business offers new and certified used car investment packages. Members fund a USDT wallet and pick a plan." },
     { slug: "agreement", title: "User Agreement", body: "By creating an account you accept this agreement." },
     { slug: "privacy", title: "Privacy Policy", body: "We collect account details you submit to run the app." },
     { slug: "support", title: "Support", body: "Contact @olxbusiness_help on Telegram. Online 24 hours." },
-    { slug: "faq", title: "FAQ intro", body: "Cloud mining, VIP plans, recharge and withdraw." },
+    { slug: "faq", title: "FAQ intro", body: "Car packages, USDT funding, and payouts." },
     { slug: "app", title: "App download", body: "Android 8+ or iOS 14+. Add to Home Screen." },
   ],
   notices: [
-    { id: "n1", title: "Welcome to OLX Business", body: "VIP mining is live. Recharge USDT to start.", enabled: true },
+    { id: "n1", title: "Welcome to OLX Business", body: "New and used car packages are live. Fund USDT to invest.", enabled: true },
     { id: "n2", title: "Withdraw window", body: "Withdrawals are processed within 1–3 hours.", enabled: true },
   ],
   faqs: [
-    { id: "f1", tab: "mining", title: "How does cloud mining start?", body: "Create an account, recharge, and pick a VIP plan. Mining begins after payment is confirmed.", enabled: true },
-    { id: "f2", tab: "wallet", title: "Which networks are supported?", body: "USDT on BEP20 and TRC20 is primary. Always send the same coin on the selected network.", enabled: true },
+    { id: "f1", tab: "cars", title: "How do car packages work?", body: "Fund USDT, pick New or Used, invest in a package. Returns follow the plan term.", enabled: true },
+    { id: "f2", tab: "wallet", title: "How do I fund and withdraw?", body: "USDT only. No chain list. Enter your payout address on Withdraw.", enabled: true },
     { id: "f3", tab: "about", title: "How do I contact support?", body: "Open Telegram @olxbusiness_help. Online 24 hours.", enabled: true },
   ],
   activities: [
@@ -207,10 +211,9 @@ const seed: Store = {
     rechargeOn: true,
     withdrawOn: true,
     transferOn: true,
-    miningOn: true,
+    packagesOn: true,
     minWithdraw: 1,
-    bep20Fee: 1,
-    trc20Fee: 0,
+    payoutFee: 1,
     dailyCap: 5000,
     maintenance: "",
     commissionL1: 15,
@@ -218,6 +221,46 @@ const seed: Store = {
     commissionL3: 1,
   },
 };
+
+function normalizeVip(row: Partial<VipPlan> & { rebate?: string; hashpower?: string }): VipPlan {
+  const kind: CarKind =
+    row.kind === "used" || String(row.rebate || "").toLowerCase().includes("used") ? "used" : "new";
+  const rawImage = typeof row.image === "string" ? row.image.trim() : "";
+  const image =
+    rawImage && !rawImage.includes("unsplash.com") && (/^https?:\/\//i.test(rawImage) || rawImage.startsWith("/cars/") || rawImage.startsWith("/uploads/"))
+      ? rawImage
+      : DEFAULT_CAR_IMAGE[kind];
+  return {
+    id: String(row.id || nid("car")),
+    name: String(row.name || "Package"),
+    range: String(row.range || ""),
+    income: String(row.income || ""),
+    days: Number(row.days) || 30,
+    kind,
+    image,
+    enabled: row.enabled !== false,
+  };
+}
+
+function normalizeSettings(
+  raw: Partial<Settings> & { miningOn?: boolean; bep20Fee?: number; trc20Fee?: number },
+  base: Settings
+): Settings {
+  return {
+    ...base,
+    ...raw,
+    packagesOn: raw.packagesOn ?? raw.miningOn ?? base.packagesOn,
+    payoutFee: Number(raw.payoutFee ?? raw.bep20Fee ?? base.payoutFee),
+  };
+}
+
+function normalizeCoins(rows: CoinRow[], fallback: CoinRow[]): CoinRow[] {
+  const usdt = rows.find((c) => c.id === "usdt" || c.name.toUpperCase().includes("USDT"));
+  if (usdt) {
+    return [{ ...usdt, id: "usdt", name: usdt.name || "USDT", network: "Wallet" }];
+  }
+  return fallback;
+}
 
 function load(): Store {
   const base = structuredClone(seed);
@@ -232,13 +275,13 @@ function load(): Store {
     return {
       ...base,
       ...parsed,
-      settings: { ...base.settings, ...(parsed.settings || {}) },
+      settings: normalizeSettings(parsed.settings || {}, base.settings),
       users: parsed.users ?? base.users,
       recharges: parsed.recharges ?? base.recharges,
       withdraws: parsed.withdraws ?? base.withdraws,
       transfers: parsed.transfers ?? base.transfers,
-      vips: parsed.vips ?? base.vips,
-      coins: parsed.coins ?? base.coins,
+      vips: (parsed.vips ?? base.vips).map(normalizeVip),
+      coins: normalizeCoins(parsed.coins ?? [], base.coins),
       cms: parsed.cms ?? base.cms,
       notices: parsed.notices ?? base.notices,
       faqs: parsed.faqs ?? base.faqs,

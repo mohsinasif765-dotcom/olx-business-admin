@@ -13,7 +13,7 @@ export default function Page() {
   const [action, setAction] = useState<WithdrawRow["status"] | null>(null);
   const [account, setAccount] = useState("");
   const [amount, setAmount] = useState("");
-  const [wallet, setWallet] = useState("TRC20-USDT");
+  const [wallet, setWallet] = useState("USDT");
   const [address, setAddress] = useState("");
 
   useEffect(() => setRows(getStore().withdraws), []);

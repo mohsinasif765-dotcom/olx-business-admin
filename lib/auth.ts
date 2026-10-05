@@ -37,22 +37,29 @@ export function getAdminUsername() {
   return readCreds().user;
 }
 
+function sessionStore() {
+  if (typeof window === "undefined") return null;
+  window.localStorage.removeItem(SESSION_KEY);
+  return window.sessionStorage;
+}
+
 export function isAdminLoggedIn() {
-  if (typeof window === "undefined") return false;
-  return window.localStorage.getItem(SESSION_KEY) === "1";
+  return sessionStore()?.getItem(SESSION_KEY) === "1";
 }
 
 export function loginAdmin(user: string, pass: string) {
+  const store = sessionStore();
+  if (!store) return false;
   const creds = readCreds();
   if (user.trim() === creds.user && pass === creds.pass) {
-    window.localStorage.setItem(SESSION_KEY, "1");
+    store.setItem(SESSION_KEY, "1");
     return true;
   }
   return false;
 }
 
 export function logoutAdmin() {
-  window.localStorage.removeItem(SESSION_KEY);
+  sessionStore()?.removeItem(SESSION_KEY);
 }
 
 export function changeAdminPassword(current: string, next: string): { ok: true } | { ok: false; error: string } {

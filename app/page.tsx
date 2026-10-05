@@ -17,6 +17,10 @@ export default function LoginPage() {
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!pass.trim()) {
+      setError("Enter your password.");
+      return;
+    }
     const ok = loginAdmin(user, pass);
     if (!ok) {
       setError("Wrong username or password.");
@@ -42,7 +46,13 @@ export default function LoginPage() {
         />
         <label className="mb-1.5 block text-[12px] font-medium text-white/55">Password</label>
         <div className="mb-6">
-          <PasswordField value={pass} onChange={setPass} autoComplete="current-password" placeholder="Enter password" />
+          <PasswordField
+            value={pass}
+            onChange={setPass}
+            autoComplete="current-password"
+            placeholder="Enter password"
+            autoFocus
+          />
         </div>
         {error ? <p className="mb-4 text-center text-[13px] text-[#ff9aa8]">{error}</p> : null}
         <button type="submit" className="admin-btn w-full">

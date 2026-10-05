@@ -138,7 +138,7 @@ export default function Page() {
           <thead>
             <tr>
               <th>Account</th>
-              <th>VIP</th>
+              <th>Package</th>
               <th>Invite</th>
               <th>Upline</th>
               <th>Invest</th>

@@ -2,7 +2,7 @@
 
 * { box-sizing: border-box; }
 
-html, body { min-height: 100%; }
+html, body { min-height: 100%; overflow-x: clip; }
 
 a { color: inherit; text-decoration: none; }
 
@@ -310,6 +310,53 @@ textarea.admin-input {
   color: #e0e2ff;
 }
 
+.photo-field {
+  display: flex;
+  gap: 14px;
+  align-items: stretch;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid #2a2b33;
+  background: #0c0c0f;
+}
+
+.photo-preview {
+  width: 148px;
+  min-height: 96px;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 10px;
+  background: #16171c;
+  display: grid;
+  place-items: center;
+  color: #6b6f7c;
+  font-size: 12px;
+}
+
+.photo-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+@media (max-width: 720px) {
+  .photo-field {
+    flex-direction: column;
+  }
+  .photo-preview {
+    width: 100%;
+    height: 148px;
+  }
+}
+
+.field-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.55);
+}
+
 .user-chip {
   display: inline-flex;
   align-items: center;
@@ -342,12 +389,49 @@ textarea.admin-input {
   background: #111214;
 }
 
+.menu-btn {
+  display: none;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 8px;
+  border: 1px solid #26272e;
+  background: #16171c;
+  color: #e8eaef;
+}
+
+.admin-scrim {
+  display: none;
+}
+
 @media (max-width: 900px) {
   .admin-app { grid-template-columns: 1fr; }
-  .admin-side {
-    position: relative;
-    height: auto;
+  .menu-btn { display: grid; }
+  .admin-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    background: rgba(0, 0, 0, 0.55);
+    border: 0;
   }
-  .admin-top { padding: 12px 14px; }
-  .admin-main { padding: 16px 14px 40px; }
+  .admin-side {
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 50;
+    width: min(280px, 88vw);
+    height: 100vh;
+    height: 100dvh;
+    transform: translateX(-105%);
+    transition: transform 0.2s ease;
+    border-right: 1px solid #1c1d24;
+  }
+  .admin-side.is-open {
+    transform: translateX(0);
+  }
+  .admin-top { padding: 10px 12px; }
+  .admin-main { padding: 14px 12px 40px; }
+  .env-pill { display: none; }
+  .admin-input { font-size: 16px; }
 }

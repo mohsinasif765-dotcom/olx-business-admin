@@ -14,7 +14,7 @@ export default function Page() {
 
   const cards = [
     { label: "Members", value: String(s.users.length) },
-    { label: "VIP members", value: String(s.users.filter((u) => u.vip !== "—").length) },
+    { label: "Package members", value: String(s.users.filter((u) => u.vip !== "—").length) },
     { label: "Invest total", value: `$${s.users.reduce((n, u) => n + u.invest, 0).toFixed(2)}` },
     { label: "Brokerage total", value: `$${s.users.reduce((n, u) => n + u.brokerage, 0).toFixed(2)}` },
     { label: "Pending recharge", value: String(s.recharges.filter((r) => r.status === "pending").length) },

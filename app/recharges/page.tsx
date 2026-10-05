@@ -14,7 +14,6 @@ export default function Page() {
   const [note, setNote] = useState("");
   const [account, setAccount] = useState("");
   const [amount, setAmount] = useState("");
-  const [network, setNetwork] = useState("BEP20-USDT");
   const [txHash, setTxHash] = useState("");
 
   useEffect(() => setRows(getStore().recharges), []);
@@ -36,7 +35,7 @@ export default function Page() {
             id: nid("r"),
             account: account.trim(),
             amount: Number(amount),
-            network,
+            network: "USDT",
             txHash: txHash.trim() || "—",
             status: "pending",
             at: stamp(),
@@ -51,12 +50,7 @@ export default function Page() {
       }}>
         <input value={account} onChange={(e) => setAccount(e.target.value)} className="admin-input" placeholder="Member account" />
         <input value={amount} onChange={(e) => setAmount(e.target.value)} className="admin-input" placeholder="Amount USDT" />
-        <select value={network} onChange={(e) => setNetwork(e.target.value)} className="admin-input">
-          {getStore().coins.map((c) => (
-            <option key={c.id}>{c.name}</option>
-          ))}
-        </select>
-        <input value={txHash} onChange={(e) => setTxHash(e.target.value)} className="admin-input" placeholder="Tx hash (optional)" />
+        <input value={txHash} onChange={(e) => setTxHash(e.target.value)} className="admin-input" placeholder="Note (optional)" />
       </AddPanel>
       {pending && action ? (
         <ConfirmBar

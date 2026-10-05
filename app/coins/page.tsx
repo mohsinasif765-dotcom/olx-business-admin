@@ -1,91 +1,72 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AddPanel } from "@/components/AddPanel";
 import { AdminShell } from "@/components/AdminShell";
 import { useToast } from "@/components/Feedback";
-import { getStore, nid, patchStore, type CoinRow } from "@/lib/store";
+import { getStore, patchStore, type CoinRow } from "@/lib/store";
 
 export default function Page() {
   const { toast, node } = useToast();
-  const [rows, setRows] = useState<CoinRow[]>([]);
-  const [name, setName] = useState("");
-  const [network, setNetwork] = useState("");
-  const [min, setMin] = useState("10");
-  const [address, setAddress] = useState("");
-  useEffect(() => setRows(getStore().coins), []);
+  const [row, setRow] = useState<CoinRow | null>(null);
 
-  function save(id: string, field: keyof CoinRow, value: string | boolean) {
+  useEffect(() => {
+    const coins = getStore().coins;
+    const usdt = coins.find((c) => c.id === "usdt") ?? coins[0] ?? null;
+    setRow(usdt);
+  }, []);
+
+  function save(field: keyof CoinRow, value: string | boolean) {
+    if (!row) return;
     patchStore((s) => {
-      const c = s.coins.find((x) => x.id === id);
+      if (!s.coins.length) {
+        s.coins.push({
+          id: "usdt",
+          name: "USDT",
+          network: "Wallet",
+          min: "10",
+          address: "OLX-USDT-WALLET-DEMO",
+          enabled: true,
+        });
+      }
+      const c = s.coins.find((x) => x.id === row.id) ?? s.coins[0];
       if (c) (c as Record<string, unknown>)[field] = value;
-    }, { action: "coin_edit", target: id });
-    setRows(getStore().coins);
-    toast("Coin saved");
+    }, { action: "usdt_edit", target: String(field) });
+    const coins = getStore().coins;
+    setRow(coins.find((c) => c.id === row.id) ?? coins[0]);
+    toast("USDT wallet saved");
+  }
+
+  if (!row) {
+    return (
+      <AdminShell title="USDT wallet">
+        {node}
+        <p className="text-[13px] text-white/50">No USDT wallet yet.</p>
+      </AdminShell>
+    );
   }
 
   return (
-    <AdminShell title="Company deposit coins">
+    <AdminShell title="USDT wallet">
       {node}
-      <AddPanel title="Add coin / network" hint="New recharge option with deposit address and minimum." onSubmit={() => {
-        if (!name.trim() || !address.trim()) {
-          toast("Name and address required");
-          return;
-        }
-        patchStore((s) => {
-          s.coins.push({
-            id: nid("c"),
-            name: name.trim(),
-            network: network.trim() || name.trim(),
-            min: min.trim() || "10",
-            address: address.trim(),
-            enabled: true,
-          });
-        }, { action: "coin_add", target: name.trim() });
-        setName("");
-        setNetwork("");
-        setAddress("");
-        setRows(getStore().coins);
-        toast("Coin added");
-      }}>
-        <input value={name} onChange={(e) => setName(e.target.value)} className="admin-input" placeholder="Name e.g. SOL-USDT" />
-        <input value={network} onChange={(e) => setNetwork(e.target.value)} className="admin-input" placeholder="Network e.g. SOL" />
-        <input value={min} onChange={(e) => setMin(e.target.value)} className="admin-input" placeholder="Min amount" />
-        <input value={address} onChange={(e) => setAddress(e.target.value)} className="admin-input" placeholder="Deposit address" />
-      </AddPanel>
-      <p className="mb-4 text-[13px] text-white/50">Replaces DEMO addresses in the member recharge screen after API wiring.</p>
-      <div className="space-y-3">
-        {rows.map((coin) => (
-          <article key={coin.id} className="admin-card grid gap-2 p-4 md:grid-cols-5">
-            <p className="font-semibold md:col-span-5">{coin.name}</p>
-            <label className="text-[11px] text-white/45">
-              Min
-              <input defaultValue={coin.min} className="admin-input mt-1" onBlur={(e) => save(coin.id, "min", e.target.value)} />
-            </label>
-            <label className="text-[11px] text-white/45 md:col-span-3">
-              Deposit address
-              <input defaultValue={coin.address} className="admin-input mt-1 font-mono text-[12px]" onBlur={(e) => save(coin.id, "address", e.target.value)} />
-            </label>
-            <label className="flex items-end gap-2">
-              <button type="button" className="ghost-btn w-full" onClick={() => save(coin.id, "enabled", !coin.enabled)}>
-                {coin.enabled ? "Enabled" : "Disabled"}
-              </button>
-              <button
-                type="button"
-                className="ghost-btn"
-                onClick={() => {
-                  patchStore((s) => {
-                    s.coins = s.coins.filter((c) => c.id !== coin.id);
-                  }, { action: "coin_delete", target: coin.id });
-                  setRows(getStore().coins);
-                  toast("Coin removed");
-                }}
-              >
-                Delete
-              </button>
-            </label>
-          </article>
-        ))}
+      <p className="mb-4 max-w-2xl text-[13px] leading-5 text-white/50">
+        Members fund and withdraw in USDT only. There is no coin list. When the database is connected, this address is the live deposit wallet.
+      </p>
+      <div className="admin-card max-w-2xl space-y-4 p-5">
+        <label className="block text-[12px] text-white/50">
+          Display name
+          <input defaultValue={row.name} className="admin-input mt-1" onBlur={(e) => save("name", e.target.value.trim() || "USDT")} />
+        </label>
+        <label className="block text-[12px] text-white/50">
+          Minimum fund (USDT)
+          <input defaultValue={row.min} className="admin-input mt-1" onBlur={(e) => save("min", e.target.value.trim() || "10")} />
+        </label>
+        <label className="block text-[12px] text-white/50">
+          Deposit wallet
+          <input defaultValue={row.address} className="admin-input mt-1 font-mono text-[12px]" onBlur={(e) => save("address", e.target.value.trim())} />
+        </label>
+        <button type="button" className="ghost-btn" onClick={() => save("enabled", !row.enabled)}>
+          {row.enabled ? "Funding on" : "Funding paused"}
+        </button>
       </div>
     </AdminShell>
   );

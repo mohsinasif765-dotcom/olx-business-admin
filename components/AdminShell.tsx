@@ -23,9 +23,9 @@ const GROUPS = [
   {
     label: "Product",
     items: [
-      { href: "/vip", label: "VIP / Mining", icon: "star" },
+      { href: "/vip", label: "Car packages", icon: "star" },
       { href: "/team", label: "Team rates", icon: "team" },
-      { href: "/coins", label: "Coins", icon: "coin" },
+      { href: "/coins", label: "USDT wallet", icon: "coin" },
       { href: "/catalog", label: "Catalog", icon: "catalog" },
       { href: "/cms", label: "Pages", icon: "doc" },
     ],
@@ -44,6 +44,7 @@ export function AdminShell({ title, children }: { title: string; children: React
   const pathname = usePathname();
   const router = useRouter();
   const [ready, setReady] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [adminName, setAdminName] = useState("admin");
 
   useEffect(() => {
@@ -55,6 +56,10 @@ export function AdminShell({ title, children }: { title: string; children: React
     setReady(true);
   }, [router]);
 
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [pathname]);
+
   if (!ready) {
     return (
       <div className="grid min-h-screen place-items-center text-white/45">
@@ -63,52 +68,62 @@ export function AdminShell({ title, children }: { title: string; children: React
     );
   }
 
+  const nav = (
+    <>
+      <div className="brand-mark">
+        <img src="/logo.png" alt="" className="h-10 w-10 rounded-xl bg-white object-contain p-0.5" />
+        <div>
+          <p className="text-[14px] font-semibold leading-tight">OLX Business</p>
+          <p className="text-[11px] font-medium text-white/40">Operations</p>
+        </div>
+      </div>
+      <nav className="flex-1 overflow-y-auto pr-0.5">
+        {GROUPS.map((group) => (
+          <div key={group.label}>
+            <p className="nav-label">{group.label}</p>
+            {group.items.map((item) => {
+              const on = pathname === item.href || pathname.startsWith(`${item.href}/`);
+              return (
+                <Link key={item.href} href={item.href} className={`admin-nav ${on ? "is-on" : ""}`}>
+                  <NavIcon name={item.icon} />
+                  {item.label}
+                </Link>
+              );
+            })}
+          </div>
+        ))}
+      </nav>
+      <div className="side-foot">
+        <button
+          type="button"
+          className="admin-nav is-out"
+          onClick={() => {
+            logoutAdmin();
+            router.push("/");
+          }}
+        >
+          <NavIcon name="logout" />
+          Sign out
+        </button>
+      </div>
+    </>
+  );
+
   return (
     <div className="admin-app">
-      <aside className="admin-side">
-        <div className="brand-mark">
-          <img src="/logo.png" alt="" className="h-10 w-10 rounded-xl bg-white object-contain p-0.5" />
-          <div>
-            <p className="text-[14px] font-semibold leading-tight">OLX Business</p>
-            <p className="text-[11px] font-medium text-white/40">Operations</p>
-          </div>
-        </div>
-        <nav className="flex-1 overflow-y-auto pr-0.5">
-          {GROUPS.map((group) => (
-            <div key={group.label}>
-              <p className="nav-label">{group.label}</p>
-              {group.items.map((item) => {
-                const on = pathname === item.href || pathname.startsWith(`${item.href}/`);
-                return (
-                  <Link key={item.href} href={item.href} className={`admin-nav ${on ? "is-on" : ""}`}>
-                    <NavIcon name={item.icon} />
-                    {item.label}
-                  </Link>
-                );
-              })}
-            </div>
-          ))}
-        </nav>
-        <div className="side-foot">
-          <button
-            type="button"
-            className="admin-nav is-out"
-            onClick={() => {
-              logoutAdmin();
-              router.push("/");
-            }}
-          >
-            <NavIcon name="logout" />
-            Sign out
-          </button>
-        </div>
-      </aside>
+      {menuOpen ? <button type="button" className="admin-scrim" aria-label="Close menu" onClick={() => setMenuOpen(false)} /> : null}
+      <aside className={`admin-side ${menuOpen ? "is-open" : ""}`}>{nav}</aside>
       <div className="min-w-0">
         <header className="admin-top">
-          <div>
-            <h1 className="text-[18px] font-semibold tracking-tight text-[#f4f5f8]">{title}</h1>
+          <div className="flex min-w-0 items-center gap-2">
+            <button type="button" className="menu-btn" aria-label="Open menu" onClick={() => setMenuOpen(true)}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <path d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+            <h1 className="truncate text-[18px] font-semibold tracking-tight text-[#f4f5f8]">{title}</h1>
           </div>
-          <div className="flex items-center">
+          <div className="flex min-w-0 items-center">
             <span className="env-pill">
               <span className="live-dot" />
               Local
@@ -117,7 +132,7 @@ export function AdminShell({ title, children }: { title: string; children: React
               <span className="grid h-7 w-7 place-items-center rounded-full bg-[#1e1f2a] text-[11px] font-semibold uppercase text-[#c7c9ff]">
                 {adminName.slice(0, 1)}
               </span>
-              {adminName}
+              <span className="max-w-[88px] truncate">{adminName}</span>
             </span>
           </div>
         </header>

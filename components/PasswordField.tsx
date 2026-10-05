@@ -8,12 +8,14 @@ export function PasswordField({
   onChange,
   placeholder,
   autoComplete,
+  autoFocus,
 }: {
   name?: string;
   value?: string;
   onChange?: (value: string) => void;
   placeholder?: string;
   autoComplete?: string;
+  autoFocus?: boolean;
 }) {
   const [show, setShow] = useState(false);
 
@@ -26,6 +28,8 @@ export function PasswordField({
         onChange={(e) => onChange?.(e.target.value)}
         placeholder={placeholder}
         autoComplete={autoComplete}
+        autoFocus={autoFocus}
+        required
         className="admin-input with-eye"
       />
       <button
