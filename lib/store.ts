@@ -315,6 +315,20 @@ export function getStore() {
   return load();
 }
 
+export function replaceStore(store: Store) {
+  save(store);
+  return store;
+}
+
+function persistRemote(store: Store) {
+  if (typeof window === "undefined") return;
+  void fetch("/api/ops", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(store),
+  }).catch(() => {});
+}
+
 export function patchStore(update: (store: Store) => void, audit?: Omit<AuditRow, "id" | "at" | "actor">) {
   const store = load();
   update(store);
@@ -327,6 +341,7 @@ export function patchStore(update: (store: Store) => void, audit?: Omit<AuditRow
     });
   }
   save(store);
+  persistRemote(store);
   return store;
 }
 

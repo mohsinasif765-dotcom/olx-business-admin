@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { ReactNode, useEffect, useState } from "react";
 import { NavIcon } from "@/components/NavIcon";
 import { getAdminUsername, isAdminLoggedIn, logoutAdmin } from "@/lib/auth";
+import { replaceStore, type Store } from "@/lib/store";
 
 const GROUPS = [
   {
@@ -53,7 +54,13 @@ export function AdminShell({ title, children }: { title: string; children: React
       return;
     }
     setAdminName(getAdminUsername());
-    setReady(true);
+    void fetch("/api/ops")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { store?: Store | null } | null) => {
+        if (data?.store) replaceStore(data.store);
+      })
+      .catch(() => {})
+      .finally(() => setReady(true));
   }, [router]);
 
   useEffect(() => {
