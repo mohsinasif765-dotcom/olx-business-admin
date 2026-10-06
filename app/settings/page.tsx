@@ -5,7 +5,7 @@ import { AdminShell } from "@/components/AdminShell";
 import { useToast } from "@/components/Feedback";
 import { PasswordField } from "@/components/PasswordField";
 import { changeAdminPassword } from "@/lib/auth";
-import { getStore, patchStore, type Settings } from "@/lib/store";
+import { fetchOpsStore, getStore, patchStore, type Settings } from "@/lib/store";
 
 export default function Page() {
   const { toast, node } = useToast();
@@ -14,17 +14,19 @@ export default function Page() {
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
   const [pwdError, setPwdError] = useState("");
-  useEffect(() => setS(getStore().settings), []);
+  useEffect(() => {
+    void fetchOpsStore().then((store) => setS(store.settings));
+  }, []);
   if (!s) return <AdminShell title="Settings">Loading…</AdminShell>;
 
-  function onChangePassword(event: FormEvent) {
+  async function onChangePassword(event: FormEvent) {
     event.preventDefault();
     setPwdError("");
     if (next !== confirm) {
       setPwdError("New password and confirmation do not match.");
       return;
     }
-    const result = changeAdminPassword(current, next);
+    const result = await changeAdminPassword(current, next);
     if (!result.ok) {
       setPwdError(result.error);
       return;
@@ -115,6 +117,18 @@ export default function Page() {
         ))}
         <div className="grid grid-cols-2 gap-3">
           <label className="text-[12px] text-white/50">
+            LEV 1 %
+            <input type="number" value={s.commissionL1} onChange={(e) => setS({ ...s, commissionL1: Number(e.target.value) })} className="admin-input mt-1" />
+          </label>
+          <label className="text-[12px] text-white/50">
+            LEV 2 %
+            <input type="number" value={s.commissionL2} onChange={(e) => setS({ ...s, commissionL2: Number(e.target.value) })} className="admin-input mt-1" />
+          </label>
+          <label className="text-[12px] text-white/50">
+            LEV 3 %
+            <input type="number" value={s.commissionL3} onChange={(e) => setS({ ...s, commissionL3: Number(e.target.value) })} className="admin-input mt-1" />
+          </label>
+          <label className="text-[12px] text-white/50">
             Min withdraw
             <input type="number" value={s.minWithdraw} onChange={(e) => setS({ ...s, minWithdraw: Number(e.target.value) })} className="admin-input mt-1" />
           </label>
@@ -135,7 +149,7 @@ export default function Page() {
           Save settings
         </button>
         <p className="text-[12px] text-white/40">
-          No database in this panel yet. `lib/store.ts` is the swap point for Prisma/Supabase later.
+          Saved to Zuvo. Site name, packages, maintenance, and LEV 1–3 rates show on member Team / Invite / Cars.
         </p>
       </div>
     </AdminShell>

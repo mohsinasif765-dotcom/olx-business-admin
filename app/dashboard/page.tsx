@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AdminShell } from "@/components/AdminShell";
-import { getStore } from "@/lib/store";
+import { fetchOpsStore, getStore } from "@/lib/store";
 
 export default function Page() {
-  const [s, setS] = useState(() => getStore());
-  useEffect(() => setS(getStore()), []);
+  const [s, setS] = useState(() => ({ ...getStore(), users: [] as ReturnType<typeof getStore>["users"] }));
+  useEffect(() => {
+    void fetchOpsStore().then(setS);
+  }, []);
 
   const todayIn = s.recharges.filter((r) => r.status === "paid").reduce((n, r) => n + r.amount, 0);
   const pendingOut = s.withdraws.filter((w) => w.status === "pending");

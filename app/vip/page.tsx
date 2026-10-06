@@ -6,7 +6,7 @@ import { AdminShell } from "@/components/AdminShell";
 import { useToast } from "@/components/Feedback";
 import { PhotoField } from "@/components/PhotoField";
 import { isPackageImage, mediaSrc, publishCarCatalog } from "@/lib/publish-plans";
-import { DEFAULT_CAR_IMAGE, getStore, nid, patchStore, type CarKind, type VipPlan } from "@/lib/store";
+import { DEFAULT_CAR_IMAGE, fetchOpsStore, getStore, nid, patchStore, type CarKind, type VipPlan } from "@/lib/store";
 
 export default function Page() {
   const { toast, node } = useToast();
@@ -19,9 +19,7 @@ export default function Page() {
   const [image, setImage] = useState(DEFAULT_CAR_IMAGE.new);
 
   useEffect(() => {
-    const vips = getStore().vips;
-    setRows(vips);
-    void publishCarCatalog(vips);
+    void fetchOpsStore().then((s) => setRows(s.vips));
   }, []);
 
   async function commit(
@@ -40,7 +38,7 @@ export default function Page() {
       {node}
       <AddPanel
         title="Add car package"
-        hint="Same card the member sees on Cars. Upload a photo now; when the database is connected these fields save the same way."
+        hint="Same card the member sees on Cars. Saved to Zuvo and shown live after publish."
         submit="Add and publish"
         onSubmit={() => {
           if (!name.trim() || !range.trim() || !income.trim()) {

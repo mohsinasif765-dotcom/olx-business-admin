@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { AddPanel } from "@/components/AddPanel";
 import { AdminShell } from "@/components/AdminShell";
 import { ConfirmBar, useToast } from "@/components/Feedback";
-import { getStore, nid, patchStore, stamp, type OrderRow } from "@/lib/store";
+import { fetchOpsStore, getStore, nid, patchStore, stamp, type OrderRow } from "@/lib/store";
 
 export default function Page() {
   const { toast, node } = useToast();
@@ -16,7 +16,9 @@ export default function Page() {
   const [amount, setAmount] = useState("");
   const [txHash, setTxHash] = useState("");
 
-  useEffect(() => setRows(getStore().recharges), []);
+  useEffect(() => {
+    void fetchOpsStore().then((s) => setRows(s.recharges));
+  }, []);
 
   function refresh() {
     setRows(getStore().recharges);

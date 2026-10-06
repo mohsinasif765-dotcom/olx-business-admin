@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AddPanel } from "@/components/AddPanel";
 import { AdminShell } from "@/components/AdminShell";
 import { useToast } from "@/components/Feedback";
-import { getStore, nid, patchStore, stamp, type TransferRow } from "@/lib/store";
+import { fetchOpsStore, getStore, nid, patchStore, stamp, type TransferRow } from "@/lib/store";
 
 export default function Page() {
   const { toast, node } = useToast();
@@ -15,7 +15,9 @@ export default function Page() {
   const [from, setFrom] = useState<"invest" | "brokerage">("invest");
   const [to, setTo] = useState<"invest" | "brokerage">("brokerage");
 
-  useEffect(() => setRows(getStore().transfers), []);
+  useEffect(() => {
+    void fetchOpsStore().then((s) => setRows(s.transfers));
+  }, []);
   const list = useMemo(
     () => rows.filter((r) => r.account.toLowerCase().includes(q.toLowerCase())),
     [rows, q]

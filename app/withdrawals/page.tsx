@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { AddPanel } from "@/components/AddPanel";
 import { AdminShell } from "@/components/AdminShell";
 import { ConfirmBar, useToast } from "@/components/Feedback";
-import { downloadCsv, getStore, nid, patchStore, stamp, toCsv, type WithdrawRow } from "@/lib/store";
+import { downloadCsv, fetchOpsStore, getStore, nid, patchStore, stamp, toCsv, type WithdrawRow } from "@/lib/store";
 
 export default function Page() {
   const { toast, node } = useToast();
@@ -16,7 +16,9 @@ export default function Page() {
   const [wallet, setWallet] = useState("USDT");
   const [address, setAddress] = useState("");
 
-  useEffect(() => setRows(getStore().withdraws), []);
+  useEffect(() => {
+    void fetchOpsStore().then((s) => setRows(s.withdraws));
+  }, []);
 
   function apply(status: WithdrawRow["status"]) {
     if (!pending) return;

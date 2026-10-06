@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { ReactNode, useEffect, useState } from "react";
 import { NavIcon } from "@/components/NavIcon";
 import { getAdminUsername, isAdminLoggedIn, logoutAdmin } from "@/lib/auth";
-import { replaceStore, type Store } from "@/lib/store";
+import { fetchOpsStore } from "@/lib/store";
 
 const GROUPS = [
   {
@@ -25,8 +25,9 @@ const GROUPS = [
     label: "Product",
     items: [
       { href: "/vip", label: "Car packages", icon: "star" },
+      { href: "/holdings", label: "Garage holdings", icon: "star" },
       { href: "/team", label: "Team rates", icon: "team" },
-      { href: "/coins", label: "USDT wallet", icon: "coin" },
+      { href: "/coins", label: "Currencies", icon: "coin" },
       { href: "/catalog", label: "Catalog", icon: "catalog" },
       { href: "/cms", label: "Pages", icon: "doc" },
     ],
@@ -54,13 +55,8 @@ export function AdminShell({ title, children }: { title: string; children: React
       return;
     }
     setAdminName(getAdminUsername());
-    void fetch("/api/ops")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: { store?: Store | null } | null) => {
-        if (data?.store) replaceStore(data.store);
-      })
-      .catch(() => {})
-      .finally(() => setReady(true));
+    setReady(true);
+    void fetchOpsStore();
   }, [router]);
 
   useEffect(() => {

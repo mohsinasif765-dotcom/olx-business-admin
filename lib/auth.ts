@@ -47,33 +47,51 @@ export function isAdminLoggedIn() {
   return sessionStore()?.getItem(SESSION_KEY) === "1";
 }
 
-export function loginAdmin(user: string, pass: string) {
+export async function loginAdmin(user: string, pass: string) {
   const store = sessionStore();
   if (!store) return false;
-  const creds = readCreds();
-  if (user.trim() === creds.user && pass === creds.pass) {
+  try {
+    const res = await fetch("/api/admin-login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user, pass }),
+    });
+    if (!res.ok) return false;
     store.setItem(SESSION_KEY, "1");
     return true;
+  } catch {
+    return false;
   }
-  return false;
 }
 
 export function logoutAdmin() {
   sessionStore()?.removeItem(SESSION_KEY);
 }
 
-export function changeAdminPassword(current: string, next: string): { ok: true } | { ok: false; error: string } {
-  const creds = readCreds();
-  if (current !== creds.pass) {
-    return { ok: false, error: "Current password is incorrect." };
-  }
+export async function changeAdminPassword(current: string, next: string): Promise<{ ok: true } | { ok: false; error: string }> {
   const password = next.trim();
   if (password.length < 8) {
     return { ok: false, error: "New password must be at least 8 characters." };
   }
-  if (password === current) {
-    return { ok: false, error: "Choose a password different from the current one." };
+  try {
+    const res = await fetch("/api/admin-login", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ current, next: password }),
+    });
+    const data = (await res.json()) as { error?: string };
+    if (res.status === 401 || data.error === "badpass") {
+      return { ok: false, error: "Current password is incorrect." };
+    }
+    if (data.error === "same") {
+      return { ok: false, error: "Choose a password different from the current one." };
+    }
+    if (!res.ok) {
+      return { ok: false, error: data.error || "Could not save password." };
+    }
+    writeCreds({ user: readCreds().user, pass: password });
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Could not save password." };
   }
-  writeCreds({ ...creds, pass: password });
-  return { ok: true };
 }

@@ -5,6 +5,7 @@ import { AddPanel } from "@/components/AddPanel";
 import { AdminShell } from "@/components/AdminShell";
 import { useToast } from "@/components/Feedback";
 import {
+  fetchOpsStore,
   getStore,
   nid,
   patchStore,
@@ -37,7 +38,9 @@ export default function Page() {
     setActs(s.activities);
   }
 
-  useEffect(() => refresh(), []);
+  useEffect(() => {
+    void fetchOpsStore().then(() => refresh());
+  }, []);
 
   return (
     <AdminShell title="App catalog">

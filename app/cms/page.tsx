@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { AddPanel } from "@/components/AddPanel";
 import { AdminShell } from "@/components/AdminShell";
 import { useToast } from "@/components/Feedback";
-import { getStore, patchStore, type CmsPage } from "@/lib/store";
+import { fetchOpsStore, getStore, patchStore, type CmsPage } from "@/lib/store";
 
 export default function Page() {
   const { toast, node } = useToast();
@@ -12,7 +12,9 @@ export default function Page() {
   const [title, setTitle] = useState("");
   const [slug, setSlug] = useState("");
   const [body, setBody] = useState("");
-  useEffect(() => setPages(getStore().cms), []);
+  useEffect(() => {
+    void fetchOpsStore().then((s) => setPages(s.cms));
+  }, []);
 
   function save(item: CmsPage) {
     patchStore((s) => {
@@ -49,7 +51,7 @@ export default function Page() {
         <input value={slug} onChange={(e) => setSlug(e.target.value)} className="admin-input" placeholder="Slug e.g. terms" />
         <textarea value={body} onChange={(e) => setBody(e.target.value)} className="admin-input md:col-span-2" placeholder="Body copy" />
       </AddPanel>
-      <p className="mb-4 text-[13px] text-white/50">About, agreement, privacy, FAQ intro, support, app copy — edit any field.</p>
+      <p className="mb-4 text-[13px] text-white/50">Saved to Zuvo. Member About, agreement, privacy, FAQ intro, and support read these pages.</p>
       <div className="space-y-4">
         {pages.map((page) => (
           <article key={page.slug} className="admin-card space-y-2 p-4">

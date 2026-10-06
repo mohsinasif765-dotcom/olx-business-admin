@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { AdminShell } from "@/components/AdminShell";
-import { getStore, type AuditRow } from "@/lib/store";
+import { fetchOpsStore, type AuditRow } from "@/lib/store";
 
 export default function Page() {
   const [rows, setRows] = useState<AuditRow[]>([]);
-  useEffect(() => setRows(getStore().audit), []);
+  useEffect(() => {
+    void fetchOpsStore().then((s) => setRows(s.audit));
+  }, []);
 
   return (
     <AdminShell title="Audit log">

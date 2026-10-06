@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { AddPanel } from "@/components/AddPanel";
 import { AdminShell } from "@/components/AdminShell";
 import { ConfirmBar, useToast } from "@/components/Feedback";
-import { creditUser, getStore, nid, patchStore, stamp, type UserRow, type UserStatus } from "@/lib/store";
+import { displayName } from "@/lib/member-name";
+import { creditUser, fetchOpsStore, getStore, nid, patchStore, stamp, type UserRow, type UserStatus } from "@/lib/store";
 
 export default function Page() {
   const { toast, node } = useToast();
@@ -17,6 +18,7 @@ export default function Page() {
   const [reason, setReason] = useState("manual adjust");
   const [confirm, setConfirm] = useState<"credit" | "debit" | "delete" | null>(null);
   const [account, setAccount] = useState("");
+  const [name, setName] = useState("");
   const [vip, setVip] = useState("—");
   const [invite, setInvite] = useState("");
   const [upline, setUpline] = useState("");
@@ -31,11 +33,17 @@ export default function Page() {
   }
 
   useEffect(() => {
-    refresh();
+    void fetchOpsStore().then(() => refresh());
   }, []);
 
   const list = useMemo(
-    () => rows.filter((u) => u.account.toLowerCase().includes(q.toLowerCase()) || u.invite.includes(q)),
+    () =>
+      rows.filter(
+        (u) =>
+          u.account.toLowerCase().includes(q.toLowerCase()) ||
+          (u.name || "").toLowerCase().includes(q.toLowerCase()) ||
+          u.invite.includes(q)
+      ),
     [rows, q]
   );
 
@@ -58,6 +66,7 @@ export default function Page() {
       s.users.unshift({
         id: nid("u"),
         account: acc,
+        name: name.trim() || displayName("", acc),
         vip,
         invite: invite.trim() || String(Math.floor(100000 + Math.random() * 900000)),
         upline: upline.trim() || "—",
@@ -68,6 +77,7 @@ export default function Page() {
       });
     }, { action: "user_add", target: acc });
     setAccount("");
+    setName("");
     setInvite("");
     setUpline("");
     setInvest("0");
@@ -82,6 +92,7 @@ export default function Page() {
       const u = s.users.find((x) => x.id === edit.id);
       if (!u) return;
       u.account = edit.account;
+      u.name = edit.name;
       u.vip = edit.vip;
       u.invite = edit.invite;
       u.upline = edit.upline;
@@ -93,8 +104,9 @@ export default function Page() {
   return (
     <AdminShell title="Users">
       {node}
-      <AddPanel title="Add member" hint="Create a member record. Login still lives in the member app until the database is connected." onSubmit={addMember} submit="Add member">
+      <AddPanel title="Add member" hint="Saved to Zuvo members. Invest wallet and current package update from Cars invest and this panel." onSubmit={addMember} submit="Add member">
         <input value={account} onChange={(e) => setAccount(e.target.value)} className="admin-input" placeholder="Email or phone" />
+        <input value={name} onChange={(e) => setName(e.target.value)} className="admin-input" placeholder="Full name" />
         <select value={vip} onChange={(e) => setVip(e.target.value)} className="admin-input">
           {vips.map((name) => (
             <option key={name}>{name}</option>
@@ -105,7 +117,7 @@ export default function Page() {
         <input value={invest} onChange={(e) => setInvest(e.target.value)} className="admin-input" placeholder="Invest USDT" />
         <input value={brokerage} onChange={(e) => setBrokerage(e.target.value)} className="admin-input" placeholder="Brokerage USDT" />
       </AddPanel>
-      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search email / phone / invite" className="admin-input mb-4 max-w-md" />
+      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name / email / invite" className="admin-input mb-4 max-w-md" />
       {confirm && edit ? (
         <ConfirmBar
           text={
@@ -137,6 +149,7 @@ export default function Page() {
         <table className="admin-table">
           <thead>
             <tr>
+              <th>Name</th>
               <th>Account</th>
               <th>Package</th>
               <th>Invite</th>
@@ -150,6 +163,7 @@ export default function Page() {
           <tbody>
             {list.map((row) => (
               <tr key={row.id} className={edit?.id === row.id ? "bg-white/5" : ""}>
+                <td>{row.name || displayName("", row.account)}</td>
                 <td>{row.account}</td>
                 <td>{row.vip}</td>
                 <td className="font-mono text-[12px]">{row.invite}</td>
@@ -175,6 +189,7 @@ export default function Page() {
             <p className="font-semibold">Edit member</p>
             <p className="text-[12px] text-white/50">Joined {edit.joined} · No impersonation</p>
           </div>
+          <input value={edit.name || ""} onChange={(e) => setEdit({ ...edit, name: e.target.value })} className="admin-input" placeholder="Full name" />
           <input value={edit.account} onChange={(e) => setEdit({ ...edit, account: e.target.value })} className="admin-input" />
           <select value={edit.vip} onChange={(e) => setEdit({ ...edit, vip: e.target.value })} className="admin-input">
             {vips.map((name) => (

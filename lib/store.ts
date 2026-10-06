@@ -9,6 +9,7 @@ export type TicketStatus = "pending" | "paid" | "approved" | "rejected";
 export type UserRow = {
   id: string;
   account: string;
+  name: string;
   vip: string;
   invite: string;
   upline: string;
@@ -49,6 +50,21 @@ export type TransferRow = {
   at: string;
 };
 
+export type HoldingRow = {
+  id: string;
+  account: string;
+  planId: string;
+  name: string;
+  kind: string;
+  invest: string;
+  investAmount: number;
+  returns: string;
+  term: string;
+  image: string;
+  status: "active" | "ended";
+  startedAt: string;
+};
+
 export type CarKind = "new" | "used";
 
 export type VipPlan = {
@@ -75,6 +91,45 @@ export type CoinRow = {
   address: string;
   enabled: boolean;
 };
+
+export const DEFAULT_COINS: CoinRow[] = [
+  { id: "usdt", name: "USDT", network: "Tether", min: "10", address: "OLX-USDT-WALLET", enabled: true },
+  { id: "pkr", name: "PKR", network: "Pakistan", min: "1000", address: "OLX-PKR-BANK", enabled: true },
+  { id: "usd", name: "USD", network: "United States", min: "10", address: "OLX-USD-BANK", enabled: true },
+  { id: "eur", name: "EUR", network: "Europe", min: "10", address: "OLX-EUR-BANK", enabled: true },
+  { id: "gbp", name: "GBP", network: "United Kingdom", min: "10", address: "OLX-GBP-BANK", enabled: true },
+  { id: "aed", name: "AED", network: "UAE", min: "20", address: "OLX-AED-BANK", enabled: true },
+  { id: "sar", name: "SAR", network: "Saudi Arabia", min: "20", address: "OLX-SAR-BANK", enabled: true },
+  { id: "inr", name: "INR", network: "India", min: "500", address: "OLX-INR-BANK", enabled: true },
+  { id: "cny", name: "CNY", network: "China", min: "50", address: "OLX-CNY-BANK", enabled: true },
+];
+
+const LEGACY_CRYPTO = new Set(["usdc", "btc", "eth", "bnb"]);
+
+export function migrateCoins(rows: CoinRow[] | undefined | null): CoinRow[] {
+  const list = Array.isArray(rows) ? rows : [];
+  const ids = new Set(list.map((row) => String(row.id || "").toLowerCase()));
+  const looksLegacy = ids.has("btc") && ids.has("eth") && ids.has("bnb");
+  if (!list.length || looksLegacy) {
+    const usdt = list.find((row) => String(row.id).toLowerCase() === "usdt" || String(row.name).toUpperCase() === "USDT");
+    return DEFAULT_COINS.map((row) => {
+      if (row.id === "usdt" && usdt) {
+        return { ...row, address: usdt.address || row.address, min: usdt.min || row.min, enabled: usdt.enabled !== false };
+      }
+      return { ...row };
+    });
+  }
+  return list
+    .filter((row) => !LEGACY_CRYPTO.has(String(row.id || "").toLowerCase()))
+    .map((row) => ({
+      id: String(row.id || row.name || "coin").toLowerCase().replace(/[^a-z0-9]+/g, "-") || "coin",
+      name: String(row.name || "PKR").toUpperCase(),
+      network: String(row.network || "Bank"),
+      min: String(row.min || "10"),
+      address: String(row.address || ""),
+      enabled: row.enabled !== false,
+    }));
+}
 
 export type CmsPage = { slug: string; title: string; body: string };
 
@@ -130,13 +185,37 @@ export type Settings = {
   commissionL3: number;
 };
 
-const KEY = "olx-admin-v7";
+export const DEFAULT_SETTINGS: Settings = {
+  siteName: "OLX Business",
+  telegram: "https://t.me/olxbusiness_help",
+  defaultLang: "en",
+  registerOn: true,
+  loginOn: true,
+  rechargeOn: true,
+  withdrawOn: true,
+  transferOn: true,
+  packagesOn: true,
+  minWithdraw: 1,
+  payoutFee: 1,
+  dailyCap: 5000,
+  maintenance: "",
+  commissionL1: 15,
+  commissionL2: 3,
+  commissionL3: 1,
+};
+
+const KEY = "olx-admin-v9";
+
+export type AdminAuth = { user: string; pass: string };
+
+export const DEFAULT_ADMIN_AUTH: AdminAuth = { user: "admin", pass: "olx2026" };
 
 export type Store = {
   users: UserRow[];
   recharges: OrderRow[];
   withdraws: WithdrawRow[];
   transfers: TransferRow[];
+  holdings: HoldingRow[];
   vips: VipPlan[];
   coins: CoinRow[];
   cms: CmsPage[];
@@ -145,25 +224,16 @@ export type Store = {
   activities: ActivityRow[];
   audit: AuditRow[];
   settings: Settings;
+  adminAuth: AdminAuth;
+  activityState?: Record<string, unknown>;
 };
 
 const seed: Store = {
-  users: [
-    { id: "u1", account: "us6414@gmail.com", vip: "Family SUV", invite: "346099", upline: "—", invest: 220, brokerage: 18.5, status: "active", joined: "12 Sep 2026" },
-    { id: "u2", account: "ahmed.k@olx.mail", vip: "City sedan", invite: "882104", upline: "346099", invest: 100, brokerage: 4.2, status: "active", joined: "20 Sep 2026" },
-    { id: "u3", account: "+923001112233", vip: "—", invite: "110293", upline: "346099", invest: 0, brokerage: 0, status: "frozen", joined: "01 Oct 2026" },
-  ],
-  recharges: [
-    { id: "r1", account: "us6414@gmail.com", amount: 200, network: "USDT", txHash: "pay-8a…c21", status: "paid", at: "04 Oct 2026 18:12", note: "" },
-    { id: "r2", account: "ahmed.k@olx.mail", amount: 100, network: "USDT", txHash: "pay-T9…aa1", status: "pending", at: "05 Oct 2026 09:40", note: "" },
-  ],
-  withdraws: [
-    { id: "w1", account: "us6414@gmail.com", amount: 50, wallet: "USDT", address: "TXk9…a2f1", status: "pending", at: "05 Oct 2026 10:05", note: "" },
-    { id: "w2", account: "ahmed.k@olx.mail", amount: 20, wallet: "USDT", address: "0x8c…91b0", status: "paid", at: "03 Oct 2026 14:22", note: "Paid" },
-  ],
-  transfers: [
-    { id: "t1", account: "us6414@gmail.com", from: "invest", to: "brokerage", amount: 10, at: "04 Oct 2026 21:02" },
-  ],
+  users: [],
+  recharges: [],
+  withdraws: [],
+  transfers: [],
+  holdings: [],
   vips: [
     { id: "new-city", name: "City sedan", range: "$100 – $199", income: "$3.00", days: 30, kind: "new", image: "/cars/city-sedan.jpg", enabled: true },
     { id: "new-family", name: "Family SUV", range: "$200 – $499", income: "$24.00", days: 90, kind: "new", image: "/cars/family-suv.jpg", enabled: true },
@@ -174,9 +244,7 @@ const seed: Store = {
     { id: "used-suv", name: "Certified SUV", range: "$500 – $1,999", income: "$60.00", days: 150, kind: "used", image: "/cars/used-suv.jpg", enabled: true },
     { id: "used-premium", name: "Certified premium", range: "$2,000 – $4,999", income: "$360.00", days: 180, kind: "used", image: "/cars/used-premium.jpg", enabled: true },
   ],
-  coins: [
-    { id: "usdt", name: "USDT", network: "Wallet", min: "10", address: "OLX-USDT-WALLET-DEMO", enabled: true },
-  ],
+  coins: [...DEFAULT_COINS],
   cms: [
     { slug: "about", title: "About Us", body: "OLX Business offers new and certified used car investment packages. Members fund a USDT wallet and pick a plan." },
     { slug: "agreement", title: "User Agreement", body: "By creating an account you accept this agreement." },
@@ -199,27 +267,9 @@ const seed: Store = {
     { id: "a-lucky", title: "Lucky Draw", desc: "Spin once a day for extra USDT.", time: "Daily reset 00:00 UTC", status: "live", enabled: true },
     { id: "a-invite", title: "Invite & Earn", desc: "Share your invite code and earn team rebate.", time: "Long-term", status: "live", enabled: true },
   ],
-  audit: [
-    { id: "a1", at: "05 Oct 2026 10:08", actor: "admin", action: "login", target: "console" },
-  ],
-  settings: {
-    siteName: "OLX Business",
-    telegram: "https://t.me/olxbusiness_help",
-    defaultLang: "en",
-    registerOn: true,
-    loginOn: true,
-    rechargeOn: true,
-    withdrawOn: true,
-    transferOn: true,
-    packagesOn: true,
-    minWithdraw: 1,
-    payoutFee: 1,
-    dailyCap: 5000,
-    maintenance: "",
-    commissionL1: 15,
-    commissionL2: 3,
-    commissionL3: 1,
-  },
+  audit: [],
+  settings: { ...DEFAULT_SETTINGS },
+  adminAuth: { ...DEFAULT_ADMIN_AUTH },
 };
 
 function normalizeVip(row: Partial<VipPlan> & { rebate?: string; hashpower?: string }): VipPlan {
@@ -260,11 +310,8 @@ function normalizeSettings(
 }
 
 function normalizeCoins(rows: CoinRow[], fallback: CoinRow[]): CoinRow[] {
-  const usdt = rows.find((c) => c.id === "usdt" || c.name.toUpperCase().includes("USDT"));
-  if (usdt) {
-    return [{ ...usdt, id: "usdt", name: usdt.name || "USDT", network: "Wallet" }];
-  }
-  return fallback;
+  const list = migrateCoins(rows.length ? rows : fallback);
+  return list.length ? list : fallback;
 }
 
 function load(): Store {
@@ -285,6 +332,7 @@ function load(): Store {
       recharges: parsed.recharges ?? base.recharges,
       withdraws: parsed.withdraws ?? base.withdraws,
       transfers: parsed.transfers ?? base.transfers,
+      holdings: parsed.holdings ?? base.holdings,
       vips: (parsed.vips ?? base.vips).map(normalizeVip),
       coins: normalizeCoins(parsed.coins ?? [], base.coins),
       cms: parsed.cms ?? base.cms,
@@ -292,6 +340,8 @@ function load(): Store {
       faqs: parsed.faqs ?? base.faqs,
       activities: parsed.activities ?? base.activities,
       audit: parsed.audit ?? base.audit,
+      adminAuth: parsed.adminAuth?.user ? { user: String(parsed.adminAuth.user), pass: String(parsed.adminAuth.pass || "") } : base.adminAuth,
+      activityState: parsed.activityState,
     };
   } catch {
     return base;
@@ -318,6 +368,25 @@ export function getStore() {
 export function replaceStore(store: Store) {
   save(store);
   return store;
+}
+
+let opsInflight: Promise<Store> | null = null;
+
+export async function fetchOpsStore(): Promise<Store> {
+  if (opsInflight) return opsInflight;
+  opsInflight = (async () => {
+    try {
+      const res = await fetch("/api/ops", { cache: "no-store" });
+      const data = (await res.json()) as { store?: Store | null };
+      if (res.ok && data.store) return replaceStore(data.store);
+    } catch {
+      /* use local cache */
+    }
+    return getStore();
+  })().finally(() => {
+    opsInflight = null;
+  });
+  return opsInflight;
 }
 
 function persistRemote(store: Store) {

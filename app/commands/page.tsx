@@ -3,65 +3,7 @@
 import { useState } from "react";
 import { AdminShell } from "@/components/AdminShell";
 import { ConfirmBar, useToast } from "@/components/Feedback";
-import { publishCarCatalog } from "@/lib/publish-plans";
-import {
-  downloadCsv,
-  downloadJson,
-  getStore,
-  patchStore,
-  toCsv,
-  type Store,
-} from "@/lib/store";
-
-function money(value: string) {
-  const n = Number(String(value).replace(/[^0-9.]/g, ""));
-  return Number.isFinite(n) ? n : 0;
-}
-
-function rebuildCommissions(store: Store) {
-  const rate = Number(store.settings.commissionL1) || 0;
-  let total = 0;
-  for (const user of store.users) {
-    const downlines = store.users.filter((row) => row.upline === user.invite && row.status === "active");
-    const book = downlines.reduce((sum, row) => sum + row.invest, 0);
-    const credit = Number(((book * rate) / 100).toFixed(2));
-    user.brokerage = credit;
-    total += credit;
-  }
-  return `LEV 1 rebuilt at ${rate}%. Brokerage now ${total.toFixed(2)} USDT across ${store.users.length} members.`;
-}
-
-function expirePackages(store: Store) {
-  const live = new Set(store.vips.filter((plan) => plan.enabled).map((plan) => plan.name));
-  let cleared = 0;
-  for (const user of store.users) {
-    if (user.vip !== "—" && !live.has(user.vip)) {
-      user.vip = "—";
-      cleared += 1;
-    }
-  }
-  const active = store.users.filter((user) => user.vip !== "—").length;
-  return cleared
-    ? `${cleared} members taken off disabled packages. ${active} still on a live plan.`
-    : `No expired packages. ${active} members remain on live car plans.`;
-}
-
-function creditReturns(store: Store) {
-  let count = 0;
-  let total = 0;
-  for (const user of store.users) {
-    if (user.status !== "active" || user.vip === "—") continue;
-    const plan = store.vips.find((row) => row.enabled && row.name === user.vip);
-    if (!plan) continue;
-    const ret = money(plan.income);
-    user.invest = Number((user.invest + ret).toFixed(2));
-    count += 1;
-    total += ret;
-  }
-  return count
-    ? `Package returns credited to ${count} members · ${total.toFixed(2)} USDT.`
-    : "No members are on a live car package.";
-}
+import { downloadCsv, downloadJson, getStore, replaceStore, toCsv, type Store } from "@/lib/store";
 
 const JOBS = [
   {
@@ -94,22 +36,18 @@ export default function Page() {
   async function run(id: (typeof JOBS)[number]["id"]) {
     setBusy(true);
     try {
-      if (id === "publish") {
-        const result = await publishCarCatalog(getStore().vips);
-        patchStore(() => {}, { action: "command_publish", target: "car-packages" });
-        toast(result.message);
+      const res = await fetch("/api/commands", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      const data = (await res.json()) as { message?: string; error?: string; users?: Store["users"] };
+      if (!res.ok) {
+        toast(data.error || "Command failed");
         return;
       }
-      let message = "";
-      patchStore(
-        (s) => {
-          if (id === "comm") message = rebuildCommissions(s);
-          if (id === "expire") message = expirePackages(s);
-          if (id === "yield") message = creditReturns(s);
-        },
-        { action: `command_${id}`, target: "batch" }
-      );
-      toast(message);
+      if (data.users) replaceStore({ ...getStore(), users: data.users });
+      toast(data.message || "Done");
     } finally {
       setBusy(false);
       setJob(null);
@@ -133,7 +71,7 @@ export default function Page() {
         />
       ) : null}
       <p className="mb-4 max-w-2xl text-[13px] leading-5 text-white/50">
-        These jobs run on the admin store now. Publish needs the member app on port 3000. Commission and returns change member balances in this console until the database is connected.
+        These jobs run on Zuvo. Publish updates the member Cars catalog. Commission, expire, and returns change live member balances in the database.
       </p>
       <div className="grid gap-3 md:grid-cols-2">
         {JOBS.map((item) => (

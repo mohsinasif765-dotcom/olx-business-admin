@@ -15,13 +15,13 @@ export default function LoginPage() {
     if (isAdminLoggedIn()) router.replace("/dashboard");
   }, [router]);
 
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!pass.trim()) {
       setError("Enter your password.");
       return;
     }
-    const ok = loginAdmin(user, pass);
+    const ok = await loginAdmin(user, pass);
     if (!ok) {
       setError("Wrong username or password.");
       return;
