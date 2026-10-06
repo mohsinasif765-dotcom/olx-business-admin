@@ -37,18 +37,24 @@ function toRow(plan: VipPlan) {
 
 export async function GET() {
   try {
-    let res = await zuvoAdmin()
+    let data: unknown[] | null = null;
+    let error: { message?: string } | null = null;
+    const first = await zuvoAdmin()
       .from("car_packages")
       .select("id,name,kind,invest,returns,term,enabled,updated_at")
       .order("updated_at", { ascending: false });
-    if (res.error) {
-      res = await zuvoAdmin()
+    data = first.data;
+    error = first.error;
+    if (error) {
+      const retry = await zuvoAdmin()
         .from("car_packages")
         .select("id,name,kind,invest,returns,term,enabled")
         .order("id");
+      data = retry.data;
+      error = retry.error;
     }
-    if (res.error) throw res.error;
-    return NextResponse.json({ packages: (res.data || []).map((row) => toVip(row as Record<string, unknown>)) });
+    if (error) throw error;
+    return NextResponse.json({ packages: (data || []).map((row) => toVip(row as Record<string, unknown>)) });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Zuvo read failed";
     return NextResponse.json({ error: message, packages: [] }, { status: 500 });

@@ -26,14 +26,14 @@ export type CoinRow = {
   min: string;
   address: string;
   enabled: boolean;
-  payKind: "crypto" | "bank";
-  bankName: string;
-  accountName: string;
-  accountNumber: string;
-  iban: string;
-  swift: string;
-  branch: string;
-  instructions: string;
+  payKind?: "crypto" | "bank";
+  bankName?: string;
+  accountName?: string;
+  accountNumber?: string;
+  iban?: string;
+  swift?: string;
+  branch?: string;
+  instructions?: string;
 };
 
 export type CmsPage = { slug: string; title: string; body: string };
@@ -49,7 +49,7 @@ export type RechargeRow = {
   status: string;
   at: string;
   note: string;
-  slipUrl: string;
+  slipUrl?: string;
 };
 export type WithdrawRow = {
   id: string;
@@ -104,7 +104,7 @@ export async function replaceKeyed(table: string, pk: string, rows: Record<strin
   const { data: existing, error: readError } = await client.from(table).select(pk);
   if (readError) throw readError;
   const keep = new Set(rows.map((row) => String(row[pk])));
-  const extra = ((existing || []) as Record<string, string>[])
+  const extra = ((existing || []) as unknown as Record<string, string>[])
     .map((row) => String(row[pk]))
     .filter((id) => id && !keep.has(id));
   if (extra.length) {
@@ -188,14 +188,14 @@ export function coinToRow(c: CoinRow) {
     min: c.min,
     address: c.address,
     enabled: c.enabled,
-    pay_kind: c.payKind,
-    bank_name: c.bankName,
-    account_name: c.accountName,
-    account_number: c.accountNumber,
-    iban: c.iban,
-    swift: c.swift,
-    branch: c.branch,
-    instructions: c.instructions,
+    pay_kind: c.payKind || "bank",
+    bank_name: c.bankName || "",
+    account_name: c.accountName || "",
+    account_number: c.accountNumber || "",
+    iban: c.iban || "",
+    swift: c.swift || "",
+    branch: c.branch || "",
+    instructions: c.instructions || "",
   };
 }
 
