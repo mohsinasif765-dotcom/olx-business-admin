@@ -27,7 +27,7 @@ const GROUPS = [
       { href: "/vip", label: "Car packages", icon: "star" },
       { href: "/holdings", label: "Garage holdings", icon: "star" },
       { href: "/team", label: "Team rates", icon: "team" },
-      { href: "/coins", label: "Currencies", icon: "coin" },
+      { href: "/coins", label: "Banks / wallets", icon: "coin" },
       { href: "/catalog", label: "Catalog", icon: "catalog" },
       { href: "/cms", label: "Pages", icon: "doc" },
     ],

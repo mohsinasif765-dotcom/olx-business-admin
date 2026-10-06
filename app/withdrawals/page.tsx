@@ -25,22 +25,38 @@ export default function Page() {
     patchStore((s) => {
       const row = s.withdraws.find((w) => w.id === pending.id);
       if (!row) return;
-      if (row.status === "pending" && (status === "approved" || status === "paid")) {
-        const u = s.users.find((x) => x.account === row.account);
-        if (u && u.invest >= row.amount) u.invest = Number((u.invest - row.amount).toFixed(2));
+      const held = row.status === "pending" || row.status === "approved";
+      if (status === "rejected" && held) {
+        const u = s.users.find((x) => x.account.toLowerCase() === row.account.toLowerCase());
+        if (u) u.invest = Number((u.invest + row.amount).toFixed(2));
       }
       row.status = status;
     }, { action: `withdraw_${status}`, target: pending.account, amount: String(pending.amount) });
     setPending(null);
     setAction(null);
     setRows(getStore().withdraws);
-    toast("Withdrawal updated");
+    toast(status === "paid" ? "Marked paid — send confirmed" : status === "rejected" ? "Rejected and refunded" : "Approved — send payout to the member");
+  }
+
+  function confirmText() {
+    if (!pending || !action) return "";
+    const pay = `${pending.amount} ${pending.wallet}`;
+    if (action === "approved") {
+      return `Approve ${pay} for ${pending.account}? Then send ${pay} to ${pending.address}.`;
+    }
+    if (action === "paid") {
+      return `Confirm you already sent ${pay} to ${pending.address}?`;
+    }
+    return `Reject ${pay} for ${pending.account}? Amount returns to their invest wallet.`;
   }
 
   return (
     <AdminShell title="Withdrawals">
       {node}
-      <AddPanel title="Add withdrawal" hint="Create a payout ticket. Approve or mark paid after review." onSubmit={() => {
+      <p className="mb-4 max-w-3xl text-[13px] leading-5 text-white/50">
+        Member request holds the amount. You send the payout to their bank or wallet, then Approve and Mark paid. Reject refunds the hold.
+      </p>
+      <AddPanel title="Add withdrawal" hint="Create a payout ticket. Approve after you send money to the member." onSubmit={() => {
         if (!account.trim() || !Number(amount) || !address.trim()) {
           toast("Account, amount and address required");
           return;
@@ -64,9 +80,9 @@ export default function Page() {
         toast("Withdrawal added");
       }}>
         <input value={account} onChange={(e) => setAccount(e.target.value)} className="admin-input" placeholder="Member account" />
-        <input value={amount} onChange={(e) => setAmount(e.target.value)} className="admin-input" placeholder="Amount USDT" />
-        <input value={wallet} onChange={(e) => setWallet(e.target.value)} className="admin-input" placeholder="Network / wallet" />
-        <input value={address} onChange={(e) => setAddress(e.target.value)} className="admin-input" placeholder="Payout address" />
+        <input value={amount} onChange={(e) => setAmount(e.target.value)} className="admin-input" placeholder="Amount" />
+        <input value={wallet} onChange={(e) => setWallet(e.target.value)} className="admin-input" placeholder="PKR / USDT / bank" />
+        <input value={address} onChange={(e) => setAddress(e.target.value)} className="admin-input" placeholder="Member payout address" />
       </AddPanel>
       <div className="mb-3 flex gap-2">
         <button
@@ -75,7 +91,7 @@ export default function Page() {
           onClick={() =>
             downloadCsv(
               "withdrawals.csv",
-              toCsv(rows.map((r) => ({ account: r.account, amount: r.amount, wallet: r.wallet, status: r.status, at: r.at })))
+              toCsv(rows.map((r) => ({ account: r.account, amount: r.amount, wallet: r.wallet, address: r.address, status: r.status, at: r.at })))
             )
           }
         >
@@ -84,7 +100,7 @@ export default function Page() {
       </div>
       {pending && action ? (
         <ConfirmBar
-          text={`${action} ${pending.amount} USDT for ${pending.account}? Security password was already collected on the user app.`}
+          text={confirmText()}
           onYes={() => apply(action)}
           onNo={() => { setPending(null); setAction(null); }}
         />
@@ -95,8 +111,7 @@ export default function Page() {
             <tr>
               <th>Account</th>
               <th>Amount</th>
-              <th>Wallet</th>
-              <th>Address</th>
+              <th>Pay to member</th>
               <th>Status</th>
               <th>Time</th>
               <th />
@@ -106,22 +121,37 @@ export default function Page() {
             {rows.map((row) => (
               <tr key={row.id}>
                 <td>{row.account}</td>
-                <td>{row.amount} USDT</td>
-                <td>{row.wallet}</td>
-                <td className="font-mono text-[12px]">{row.address}</td>
                 <td>
-                  <span className={`pill ${row.status === "paid" || row.status === "approved" ? "pill-ok" : row.status === "pending" ? "pill-wait" : "pill-bad"}`}>
+                  {row.amount} {row.wallet}
+                </td>
+                <td className="max-w-[220px]">
+                  <p className="font-mono text-[12px] break-all">{row.address}</p>
+                  <button
+                    type="button"
+                    className="mt-1 text-[11px] text-[#9ec6ff]"
+                    onClick={() => {
+                      void navigator.clipboard.writeText(row.address);
+                      toast("Address copied");
+                    }}
+                  >
+                    Copy
+                  </button>
+                </td>
+                <td>
+                  <span className={`pill ${row.status === "paid" ? "pill-ok" : row.status === "approved" ? "pill-ok" : row.status === "pending" ? "pill-wait" : "pill-bad"}`}>
                     {row.status}
                   </span>
                 </td>
                 <td className="text-white/55">{row.at}</td>
-                <td className="space-x-2">
+                <td className="space-x-2 whitespace-nowrap">
                   {row.status === "pending" ? (
                     <>
                       <button type="button" className="ghost-btn" onClick={() => { setPending(row); setAction("approved"); }}>Approve</button>
-                      <button type="button" className="ghost-btn" onClick={() => { setPending(row); setAction("paid"); }}>Mark paid</button>
                       <button type="button" className="ghost-btn" onClick={() => { setPending(row); setAction("rejected"); }}>Reject</button>
                     </>
+                  ) : null}
+                  {row.status === "approved" ? (
+                    <button type="button" className="ghost-btn" onClick={() => { setPending(row); setAction("paid"); }}>Mark paid</button>
                   ) : null}
                 </td>
               </tr>
