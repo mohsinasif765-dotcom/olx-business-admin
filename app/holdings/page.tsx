@@ -14,7 +14,7 @@ export default function Page() {
   return (
     <AdminShell title="Garage holdings">
       <p className="mb-4 text-[13px] text-white/50">
-        Live member packages from Zuvo. Invest on Cars writes a holding here and shows it on Garage.
+        Live member packages from Zuvo. Invest on Cars or Shop writes a holding here and shows it on Garage.
       </p>
       <div className="admin-card overflow-x-auto p-4">
         <table className="admin-table">

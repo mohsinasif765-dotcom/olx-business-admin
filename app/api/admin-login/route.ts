@@ -1,26 +1,11 @@
 import { NextResponse } from "next/server";
-import { DEFAULT_ADMIN_AUTH, type AdminAuth, type Store } from "@/lib/store";
-import { zuvoAdmin } from "@/lib/zuvo";
+import { DEFAULT_ADMIN_AUTH, type AdminAuth } from "@/lib/store";
+import { readAdminAuth, writeAdminAuth } from "@/lib/db-tables";
 
 async function readAuth(): Promise<AdminAuth> {
-  const { data, error } = await zuvoAdmin().from("ops_snapshot").select("payload").eq("id", 1).maybeSingle();
-  if (error) throw error;
-  const payload = (data?.payload || {}) as Store;
-  const auth = payload.adminAuth;
-  if (auth?.user && auth.pass) return { user: String(auth.user), pass: String(auth.pass) };
+  const auth = await readAdminAuth();
+  if (auth?.user && auth.pass) return auth;
   return { ...DEFAULT_ADMIN_AUTH };
-}
-
-async function writeAuth(auth: AdminAuth) {
-  const db = zuvoAdmin();
-  const { data } = await db.from("ops_snapshot").select("payload").eq("id", 1).maybeSingle();
-  const payload = { ...((data?.payload as Store | undefined) || {}), adminAuth: auth };
-  const { error } = await db.from("ops_snapshot").upsert({
-    id: 1,
-    payload,
-    updated_at: new Date().toISOString(),
-  });
-  if (error) throw error;
 }
 
 export async function POST(request: Request) {
@@ -57,7 +42,7 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "badpass" }, { status: 401 });
     }
     if (next === auth.pass) return NextResponse.json({ error: "same" }, { status: 400 });
-    await writeAuth({ ...auth, pass: next });
+    await writeAdminAuth({ ...auth, pass: next });
     return NextResponse.json({ ok: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Zuvo write failed";

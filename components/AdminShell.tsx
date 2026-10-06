@@ -19,12 +19,14 @@ const GROUPS = [
       { href: "/recharges", label: "Recharges", icon: "in" },
       { href: "/withdrawals", label: "Withdrawals", icon: "out" },
       { href: "/transfers", label: "Transfers", icon: "swap" },
+      { href: "/transactions", label: "Transactions", icon: "log" },
     ],
   },
   {
     label: "Product",
     items: [
       { href: "/vip", label: "Car packages", icon: "star" },
+      { href: "/shop", label: "Shop packages", icon: "catalog" },
       { href: "/holdings", label: "Garage holdings", icon: "star" },
       { href: "/team", label: "Team rates", icon: "team" },
       { href: "/coins", label: "Banks / wallets", icon: "coin" },

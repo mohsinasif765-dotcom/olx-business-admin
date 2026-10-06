@@ -58,20 +58,26 @@ export default function Page() {
         <ConfirmBar
           text={`${action === "paid" ? "Approve and credit invest" : "Reject"} ${pending.amount} USDT for ${pending.account}?`}
           onYes={() => {
-            patchStore((s) => {
-              const row = s.recharges.find((r) => r.id === pending.id);
-              if (!row) return;
-              row.status = action;
-              row.note = note;
-              if (action === "paid") {
-                const u = s.users.find((x) => x.account === row.account);
-                if (u) u.invest = Number((u.invest + row.amount).toFixed(2));
-              }
-            }, { action: `recharge_${action}`, target: pending.account, amount: String(pending.amount) });
-            setPending(null);
-            setAction(null);
-            refresh();
-            toast("Recharge updated");
+            const act = action === "paid" ? "approve_recharge" : "reject_recharge";
+            void fetch("/api/finance", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ action: act, id: pending.id, note }),
+            })
+              .then(async (res) => {
+                const data = (await res.json()) as { error?: string };
+                if (!res.ok) {
+                  toast(data.error || "Update failed");
+                  return;
+                }
+                await fetchOpsStore();
+                refresh();
+                toast(action === "paid" ? "Approved — invest credited and team earnings paid" : "Rejected");
+              })
+              .finally(() => {
+                setPending(null);
+                setAction(null);
+              });
           }}
           onNo={() => {
             setPending(null);
@@ -86,6 +92,7 @@ export default function Page() {
               <th>Account</th>
               <th>Amount</th>
               <th>Network</th>
+              <th>Slip</th>
               <th>Tx hash</th>
               <th>Status</th>
               <th>Time</th>
@@ -98,6 +105,15 @@ export default function Page() {
                 <td>{row.account}</td>
                 <td>{row.amount} USDT</td>
                 <td>{row.network}</td>
+                <td>
+                  {row.slipUrl ? (
+                    <a href={row.slipUrl} target="_blank" rel="noreferrer" className="text-[#9ec6ff]">
+                      View
+                    </a>
+                  ) : (
+                    "—"
+                  )}
+                </td>
                 <td className="font-mono text-[12px]">{row.txHash}</td>
                 <td>
                   <span className={`pill ${row.status === "paid" ? "pill-ok" : row.status === "pending" ? "pill-wait" : "pill-bad"}`}>

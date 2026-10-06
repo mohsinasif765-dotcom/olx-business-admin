@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { zuvoAdmin } from "@/lib/zuvo";
 import { publishCarCatalog } from "@/lib/publish-plans";
 import type { Store, UserRow, VipPlan } from "@/lib/store";
+import { insertAudit, readSettings } from "@/lib/db-tables";
 
 function money(value: unknown) {
   const n = Number(String(value ?? "").replace(/[^0-9.-]/g, ""));
@@ -26,15 +27,14 @@ function asUser(row: Record<string, unknown>): UserRow {
 
 async function loadDb() {
   const db = zuvoAdmin();
-  const [{ data: members, error: mErr }, { data: snap, error: sErr }, { data: packs, error: pErr }] = await Promise.all([
+  const [{ data: members, error: mErr }, settings, { data: packs, error: pErr }] = await Promise.all([
     db.from("members").select("*"),
-    db.from("ops_snapshot").select("payload").eq("id", 1).maybeSingle(),
+    readSettings(),
     db.from("car_packages").select("*"),
   ]);
   if (mErr) throw mErr;
-  if (sErr) throw sErr;
   if (pErr) throw pErr;
-  const store = (snap?.payload || {}) as Store;
+  const store = { settings: settings || {} } as Store;
   const users = ((members || []) as Record<string, unknown>[]).map(asUser);
   const vips: VipPlan[] =
     store.vips ||
@@ -149,20 +149,12 @@ export async function POST(request: Request) {
     }
 
     store.users = users;
-    store.audit = [
-      {
-        id: `a${Date.now()}`,
-        at: new Date().toLocaleString(),
-        actor: "admin",
-        action: `command_${id}`,
-        target: "zuvo",
-      },
-      ...(store.audit || []),
-    ].slice(0, 80);
-    await zuvoAdmin().from("ops_snapshot").upsert({
-      id: 1,
-      payload: store,
-      updated_at: new Date().toISOString(),
+    await insertAudit({
+      id: `a${Date.now()}`,
+      at: new Date().toLocaleString(),
+      actor: "admin",
+      action: `command_${id}`,
+      target: "zuvo",
     });
     return NextResponse.json({ ok: true, message, users });
   } catch (error) {

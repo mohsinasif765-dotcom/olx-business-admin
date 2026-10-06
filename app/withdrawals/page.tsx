@@ -22,20 +22,24 @@ export default function Page() {
 
   function apply(status: WithdrawRow["status"]) {
     if (!pending) return;
-    patchStore((s) => {
-      const row = s.withdraws.find((w) => w.id === pending.id);
-      if (!row) return;
-      const held = row.status === "pending" || row.status === "approved";
-      if (status === "rejected" && held) {
-        const u = s.users.find((x) => x.account.toLowerCase() === row.account.toLowerCase());
-        if (u) u.invest = Number((u.invest + row.amount).toFixed(2));
+    const act =
+      status === "approved" ? "approve_withdraw" : status === "paid" ? "paid_withdraw" : "reject_withdraw";
+    void fetch("/api/finance", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: act, id: pending.id }),
+    }).then(async (res) => {
+      const data = (await res.json()) as { error?: string };
+      if (!res.ok) {
+        toast(data.error || "Update failed");
+        return;
       }
-      row.status = status;
-    }, { action: `withdraw_${status}`, target: pending.account, amount: String(pending.amount) });
-    setPending(null);
-    setAction(null);
-    setRows(getStore().withdraws);
-    toast(status === "paid" ? "Marked paid — send confirmed" : status === "rejected" ? "Rejected and refunded" : "Approved — send payout to the member");
+      await fetchOpsStore();
+      setPending(null);
+      setAction(null);
+      setRows(getStore().withdraws);
+      toast(status === "paid" ? "Marked paid" : status === "rejected" ? "Rejected and refunded" : "Approved — send payout");
+    });
   }
 
   function confirmText() {

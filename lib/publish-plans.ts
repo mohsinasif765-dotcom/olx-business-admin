@@ -33,7 +33,9 @@ export function isPackageImage(value: string) {
     /^https?:\/\//i.test(v) ||
     v.startsWith("data:image/") ||
     v.startsWith("/uploads/") ||
-    v.startsWith("/cars/")
+    v.startsWith("/cars/") ||
+    v.startsWith("/api/package-photo") ||
+    v.startsWith("/api/shop-photo")
   );
 }
 

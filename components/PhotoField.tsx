@@ -1,54 +1,52 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { isPackageImage, mediaSrc, uploadCarPhoto } from "@/lib/publish-plans";
+import { isPackageImage, mediaSrc } from "@/lib/publish-plans";
 
 export function PhotoField({
   value,
   onChange,
   onError,
+  label = "Car photo",
+  hint = "JPG, PNG or WEBP, up to 4 MB. Photo is stored on the package row in the car_packages table.",
 }: {
   value: string;
   onChange: (url: string) => void;
   onError: (message: string) => void;
+  label?: string;
+  hint?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
 
   async function onFile(file: File | undefined) {
     if (!file) return;
-    setBusy(true);
-    const result = await uploadCarPhoto(file);
-    if (result.ok) {
-      setBusy(false);
-      onChange(result.url);
-      return;
-    }
     if (file.size > 4 * 1024 * 1024) {
-      setBusy(false);
-      onError(result.error);
+      onError("Photo must be 4 MB or smaller.");
       return;
     }
+    setBusy(true);
+    // Prefer DB storage: encode photo as data URL so package row keeps the image.
     const reader = new FileReader();
     reader.onload = () => {
       setBusy(false);
       const url = typeof reader.result === "string" ? reader.result : "";
       if (!url.startsWith("data:image/")) {
-        onError(result.error);
+        onError("Could not read the photo.");
         return;
       }
       onChange(url);
     };
     reader.onerror = () => {
       setBusy(false);
-      onError(result.error);
+      onError("Could not read the photo.");
     };
     reader.readAsDataURL(file);
   }
 
   return (
     <div className="md:col-span-2 space-y-2">
-      <p className="text-[12px] font-medium text-white/55">Car photo</p>
+      <p className="text-[12px] font-medium text-white/55">{label}</p>
       <div className="photo-field">
         <div className="photo-preview">
           {isPackageImage(value) ? (
@@ -77,7 +75,7 @@ export function PhotoField({
             {busy ? "Uploading…" : "Upload photo"}
           </button>
           <p className="text-[12px] leading-5 text-white/40">
-            JPG, PNG or WEBP, up to 4 MB. Members see this on the Cars card. Later this same file will go to your database storage.
+            {hint}
           </p>
           <input
             value={value}

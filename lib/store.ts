@@ -28,6 +28,7 @@ export type OrderRow = {
   status: "pending" | "paid" | "rejected";
   at: string;
   note: string;
+  slipUrl?: string;
 };
 
 export type WithdrawRow = {
@@ -66,6 +67,23 @@ export type HoldingRow = {
 };
 
 export type CarKind = "new" | "used";
+export type ShopKind = "jewelry" | "electronics";
+
+export type ShopPlan = {
+  id: string;
+  name: string;
+  range: string;
+  income: string;
+  days: number;
+  kind: ShopKind;
+  image: string;
+  enabled: boolean;
+};
+
+export const DEFAULT_SHOP_IMAGE: Record<ShopKind, string> = {
+  jewelry: "/cars/luxury.jpg",
+  electronics: "/cars/executive.jpg",
+};
 
 export type VipPlan = {
   id: string;

@@ -26,7 +26,7 @@ export default function Page() {
       {node}
       <div className="admin-card max-w-xl space-y-4 p-5">
         <p className="text-[13px] text-white/55">
-          LEV 1–3 on the member Team page, Invite instructions, and Commission Details. Saved to Zuvo.
+          LEV 1–3 paid to upline brokerage when you approve a deposit or a member invests. Saved to Zuvo.
         </p>
         {(
           [
