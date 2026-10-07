@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { AddPanel } from "@/components/AddPanel";
 import { AdminShell } from "@/components/AdminShell";
 import { ConfirmBar, useToast } from "@/components/Feedback";
-import { fetchOpsStore, getStore, nid, patchStore, stamp, type OrderRow } from "@/lib/store";
+import { slipHref } from "@/lib/slip-href";
+import type { OrderRow } from "@/lib/store";
 
 export default function Page() {
   const { toast, node } = useToast();
@@ -12,53 +13,81 @@ export default function Page() {
   const [pending, setPending] = useState<OrderRow | null>(null);
   const [action, setAction] = useState<"paid" | "rejected" | null>(null);
   const [note, setNote] = useState("");
+  const [preview, setPreview] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
   const [account, setAccount] = useState("");
   const [amount, setAmount] = useState("");
-  const [txHash, setTxHash] = useState("");
+  const [network, setNetwork] = useState("PKR");
+  const [manualNote, setManualNote] = useState("");
+
+  async function load() {
+    const res = await fetch("/api/recharges", { cache: "no-store" });
+    const data = (await res.json()) as { recharges?: OrderRow[]; error?: string };
+    if (!res.ok) {
+      toast(data.error || "Could not load recharges");
+      return;
+    }
+    setRows(Array.isArray(data.recharges) ? data.recharges : []);
+  }
 
   useEffect(() => {
-    void fetchOpsStore().then((s) => setRows(s.recharges));
+    void load();
   }, []);
-
-  function refresh() {
-    setRows(getStore().recharges);
-  }
 
   return (
     <AdminShell title="Recharges">
       {node}
-      <AddPanel title="Add recharge" hint="Log a deposit ticket. Approve later to credit invest." onSubmit={() => {
-        if (!account.trim() || !Number(amount)) {
-          toast("Account and amount required");
-          return;
-        }
-        patchStore((s) => {
-          s.recharges.unshift({
-            id: nid("r"),
-            account: account.trim(),
-            amount: Number(amount),
-            network: "USDT",
-            txHash: txHash.trim() || "—",
-            status: "pending",
-            at: stamp(),
-            note: "",
-          });
-        }, { action: "recharge_add", target: account.trim(), amount });
-        setAccount("");
-        setAmount("");
-        setTxHash("");
-        refresh();
-        toast("Recharge added");
-      }}>
-        <input value={account} onChange={(e) => setAccount(e.target.value)} className="admin-input" placeholder="Member account" />
-        <input value={amount} onChange={(e) => setAmount(e.target.value)} className="admin-input" placeholder="Amount USDT" />
-        <input value={txHash} onChange={(e) => setTxHash(e.target.value)} className="admin-input" placeholder="Note (optional)" />
+      <p className="mb-4 max-w-3xl text-[13px] leading-6 text-white/50">
+        Member slips land in the table. <strong className="text-white/70">Add recharge</strong> is only if someone paid
+        outside the app — you log it, then still Approve to credit the wallet.
+      </p>
+      <AddPanel
+        title="Add recharge"
+        hint="Manual ticket when the member paid but did not submit in the app. Wallet stays empty until you Approve."
+        submit="Add pending ticket"
+        onSubmit={() => {
+          if (busy) return;
+          if (!account.trim() || !Number(amount)) {
+            toast("Member account and amount are required");
+            return;
+          }
+          setBusy(true);
+          void fetch("/api/recharges", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              account: account.trim(),
+              amount: Number(amount),
+              network: network.trim() || "PKR",
+              note: manualNote.trim(),
+            }),
+          })
+            .then(async (res) => {
+              const data = (await res.json()) as { error?: string };
+              if (!res.ok) {
+                toast(data.error || "Could not save ticket");
+                return;
+              }
+              setAccount("");
+              setAmount("");
+              setManualNote("");
+              await load();
+              toast("Pending ticket saved — Approve when you confirm the payment");
+            })
+            .finally(() => setBusy(false));
+        }}
+      >
+        <input value={account} onChange={(e) => setAccount(e.target.value)} className="admin-input" placeholder="Member account / phone" />
+        <input value={amount} onChange={(e) => setAmount(e.target.value)} className="admin-input" placeholder="Amount" />
+        <input value={network} onChange={(e) => setNetwork(e.target.value)} className="admin-input" placeholder="Currency e.g. PKR" />
+        <input value={manualNote} onChange={(e) => setManualNote(e.target.value)} className="admin-input" placeholder="Note (optional)" />
       </AddPanel>
       {pending && action ? (
         <ConfirmBar
-          text={`${action === "paid" ? "Approve and credit invest" : "Reject"} ${pending.amount} USDT for ${pending.account}?`}
+          text={`${action === "paid" ? "Approve and credit invest" : "Reject"} ${pending.amount} for ${pending.account}?`}
           onYes={() => {
             const act = action === "paid" ? "approve_recharge" : "reject_recharge";
+            setBusy(true);
             void fetch("/api/finance", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -70,13 +99,14 @@ export default function Page() {
                   toast(data.error || "Update failed");
                   return;
                 }
-                await fetchOpsStore();
-                refresh();
-                toast(action === "paid" ? "Approved — invest credited and team earnings paid" : "Rejected");
+                await load();
+                toast(action === "paid" ? "Approved — invest credited" : "Rejected");
               })
               .finally(() => {
+                setBusy(false);
                 setPending(null);
                 setAction(null);
+                setNote("");
               });
           }}
           onNo={() => {
@@ -92,54 +122,123 @@ export default function Page() {
               <th>Account</th>
               <th>Amount</th>
               <th>Network</th>
-              <th>Slip</th>
-              <th>Tx hash</th>
+              <th>Slip / bill</th>
               <th>Status</th>
               <th>Time</th>
               <th />
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
-              <tr key={row.id}>
-                <td>{row.account}</td>
-                <td>{row.amount} USDT</td>
-                <td>{row.network}</td>
-                <td>
-                  {row.slipUrl ? (
-                    <a href={row.slipUrl} target="_blank" rel="noreferrer" className="text-[#9ec6ff]">
-                      View
-                    </a>
-                  ) : (
-                    "—"
-                  )}
-                </td>
-                <td className="font-mono text-[12px]">{row.txHash}</td>
-                <td>
-                  <span className={`pill ${row.status === "paid" ? "pill-ok" : row.status === "pending" ? "pill-wait" : "pill-bad"}`}>
-                    {row.status}
-                  </span>
-                </td>
-                <td className="text-white/55">{row.at}</td>
-                <td className="space-x-2">
-                  {row.status === "pending" ? (
-                    <>
-                      <button type="button" className="ghost-btn" onClick={() => { setPending(row); setAction("paid"); }}>
-                        Approve
-                      </button>
-                      <button type="button" className="ghost-btn" onClick={() => { setPending(row); setAction("rejected"); }}>
-                        Reject
-                      </button>
-                    </>
-                  ) : null}
+            {rows.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="py-8 text-center text-white/40">
+                  No deposit tickets yet. When a member uploads a slip on Fund wallet, it shows here.
                 </td>
               </tr>
-            ))}
+            ) : (
+              rows.map((row) => {
+                const href = slipHref(row.slipUrl || "");
+                return (
+                  <tr key={row.id}>
+                    <td>{row.account}</td>
+                    <td>{row.amount}</td>
+                    <td>{row.network}</td>
+                    <td>
+                      {href ? (
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-2 text-[#9ec6ff]"
+                          onClick={() => setPreview(href)}
+                        >
+                          <img
+                            src={href}
+                            alt=""
+                            className="h-12 w-12 rounded-md border border-white/10 object-cover"
+                          />
+                          Check slip
+                        </button>
+                      ) : (
+                        <span className="text-white/35">No slip</span>
+                      )}
+                    </td>
+                    <td>
+                      <span
+                        className={`pill ${
+                          row.status === "paid" ? "pill-ok" : row.status === "pending" ? "pill-wait" : "pill-bad"
+                        }`}
+                      >
+                        {row.status}
+                      </span>
+                    </td>
+                    <td className="text-white/55">{row.at}</td>
+                    <td className="space-x-2">
+                      {row.status === "pending" ? (
+                        <>
+                          <button
+                            type="button"
+                            className="ghost-btn"
+                            disabled={busy}
+                            onClick={() => {
+                              setPending(row);
+                              setAction("paid");
+                            }}
+                          >
+                            Approve
+                          </button>
+                          <button
+                            type="button"
+                            className="ghost-btn"
+                            disabled={busy}
+                            onClick={() => {
+                              setPending(row);
+                              setAction("rejected");
+                            }}
+                          >
+                            Reject
+                          </button>
+                        </>
+                      ) : null}
+                    </td>
+                  </tr>
+                );
+              })
+            )}
           </tbody>
         </table>
       </div>
       {pending ? (
-        <input value={note} onChange={(e) => setNote(e.target.value)} className="admin-input mt-3 max-w-lg" placeholder="Note (optional)" />
+        <input
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          className="admin-input mt-3 max-w-lg"
+          placeholder="Note (optional)"
+        />
+      ) : null}
+
+      {preview ? (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-black/75 p-4"
+          onClick={() => setPreview(null)}
+          role="presentation"
+        >
+          <div
+            className="max-h-[90vh] max-w-lg overflow-auto rounded-2xl border border-white/10 bg-[#12141c] p-3"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-label="Deposit slip"
+          >
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <p className="text-[13px] font-medium text-white/80">Deposit slip</p>
+              <button type="button" className="ghost-btn" onClick={() => setPreview(null)}>
+                Close
+              </button>
+            </div>
+            <img src={preview} alt="Deposit slip" className="max-h-[75vh] w-full rounded-xl object-contain" />
+            <a href={preview} target="_blank" rel="noreferrer" className="mt-3 inline-block text-[12px] text-[#9ec6ff]">
+              Open full size
+            </a>
+          </div>
+        </div>
       ) : null}
     </AdminShell>
   );

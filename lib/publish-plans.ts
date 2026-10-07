@@ -35,14 +35,29 @@ export function isPackageImage(value: string) {
     v.startsWith("/uploads/") ||
     v.startsWith("/cars/") ||
     v.startsWith("/api/package-photo") ||
-    v.startsWith("/api/shop-photo")
+    v.startsWith("/api/shop-photo") ||
+    v.startsWith("/logo.png") ||
+    v.includes("/storage/v1/object/public/package-photos/") ||
+    v.includes("/storage/v1/object/public/brand/")
   );
 }
 
 export function mediaSrc(path: string) {
-  if (/^https?:\/\//i.test(path) || path.startsWith("data:image/")) return path;
+  const v = path.trim();
+  if (!v) return v;
+  if (/^https?:\/\//i.test(v) || v.startsWith("data:image/")) return v;
+  // Admin photo proxies live on this app — do not send them to the member URL.
+  if (
+    v.startsWith("/api/package-photo") ||
+    v.startsWith("/api/shop-photo") ||
+    v.startsWith("/api/slip-photo") ||
+    v.startsWith("/api/brand-") ||
+    v.startsWith("/logo.")
+  ) {
+    return v;
+  }
   const base = (process.env.NEXT_PUBLIC_MEMBER_URL || "http://localhost:3000").replace(/\/$/, "");
-  return `${base}${path.startsWith("/") ? path : `/${path}`}`;
+  return `${base}${v.startsWith("/") ? v : `/${v}`}`;
 }
 
 export async function uploadCarPhoto(file: File): Promise<{ ok: true; url: string } | { ok: false; error: string }> {

@@ -128,13 +128,13 @@ export function mapSettings(row: Record<string, unknown> | null | undefined): Se
     withdrawOn: on(row.withdraw_on),
     transferOn: on(row.transfer_on),
     packagesOn: on(row.packages_on),
-    minWithdraw: money(row.min_withdraw) || 1,
-    payoutFee: money(row.payout_fee) || 1,
-    dailyCap: money(row.daily_cap) || 5000,
+    minWithdraw: row.min_withdraw == null || row.min_withdraw === "" ? 1 : money(row.min_withdraw),
+    payoutFee: row.payout_fee == null || row.payout_fee === "" ? 1 : money(row.payout_fee),
+    dailyCap: row.daily_cap == null || row.daily_cap === "" ? 5000 : money(row.daily_cap),
     maintenance: String(row.maintenance || ""),
-    commissionL1: money(row.commission_l1) || 15,
-    commissionL2: money(row.commission_l2) || 3,
-    commissionL3: money(row.commission_l3) || 1,
+    commissionL1: row.commission_l1 == null || row.commission_l1 === "" ? 15 : money(row.commission_l1),
+    commissionL2: row.commission_l2 == null || row.commission_l2 === "" ? 3 : money(row.commission_l2),
+    commissionL3: row.commission_l3 == null || row.commission_l3 === "" ? 1 : money(row.commission_l3),
   };
 }
 
@@ -264,6 +264,16 @@ export async function readCoins() {
 
 export async function writeCoins(rows: CoinRow[]) {
   await replaceKeyed("pay_rails", "id", rows.map(coinToRow));
+}
+
+export async function upsertCoin(row: CoinRow) {
+  const { error } = await db().from("pay_rails").upsert(coinToRow(row));
+  if (error) throw error;
+}
+
+export async function deleteCoin(id: string) {
+  const { error } = await db().from("pay_rails").delete().eq("id", id);
+  if (error) throw error;
 }
 
 export async function readCms() {

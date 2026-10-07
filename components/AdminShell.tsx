@@ -5,7 +5,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { ReactNode, useEffect, useState } from "react";
 import { NavIcon } from "@/components/NavIcon";
 import { getAdminUsername, isAdminLoggedIn, logoutAdmin } from "@/lib/auth";
-import { fetchOpsStore } from "@/lib/store";
 
 const GROUPS = [
   {
@@ -58,7 +57,6 @@ export function AdminShell({ title, children }: { title: string; children: React
     }
     setAdminName(getAdminUsername());
     setReady(true);
-    void fetchOpsStore();
   }, [router]);
 
   useEffect(() => {

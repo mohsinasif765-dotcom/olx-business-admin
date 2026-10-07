@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { listCatalogPhotoUrls, packageImageRef, savePackagePhoto } from "@/lib/package-photos";
 import { zuvoAdmin } from "@/lib/zuvo";
 import type { ShopPlan } from "@/lib/store";
 
@@ -7,7 +8,7 @@ function daysFromTerm(term: string) {
   return Number.isFinite(n) && n > 0 ? n : 30;
 }
 
-function toShop(row: Record<string, unknown>): ShopPlan {
+function toShop(row: Record<string, unknown>, photoUrls: Record<string, string>): ShopPlan {
   const id = String(row.id);
   return {
     id,
@@ -16,12 +17,12 @@ function toShop(row: Record<string, unknown>): ShopPlan {
     income: String(row.returns || ""),
     days: daysFromTerm(String(row.term || "30")),
     kind: row.kind === "electronics" ? "electronics" : "jewelry",
-    image: `/api/shop-photo?id=${encodeURIComponent(id)}`,
+    image: packageImageRef("shop", id, photoUrls[id]),
     enabled: row.enabled !== false,
   };
 }
 
-function toRow(plan: ShopPlan) {
+function toRow(plan: ShopPlan, imageRef: string) {
   return {
     id: plan.id,
     name: plan.name,
@@ -29,7 +30,7 @@ function toRow(plan: ShopPlan) {
     invest: plan.range,
     returns: plan.income,
     term: `${Number(plan.days) || 30} days`,
-    image: plan.image,
+    image: imageRef,
     enabled: plan.enabled !== false,
     updated_at: new Date().toISOString(),
   };
@@ -54,7 +55,10 @@ export async function GET() {
       error = retry.error;
     }
     if (error) throw error;
-    return NextResponse.json({ packages: (data || []).map((row) => toShop(row as Record<string, unknown>)) });
+    const photoUrls = await listCatalogPhotoUrls("shop");
+    return NextResponse.json({
+      packages: (data || []).map((row) => toShop(row as Record<string, unknown>, photoUrls)),
+    });
   } catch (error) {
     const message =
       error && typeof error === "object" && "message" in error
@@ -76,25 +80,23 @@ export async function POST(request: Request) {
   if (!plan?.id || !plan.name || !plan.range || !plan.income || !plan.image) {
     return NextResponse.json({ error: "Name, invest, return, and photo are required" }, { status: 400 });
   }
-  if (plan.image.startsWith("/api/shop-photo")) {
-    const { data } = await zuvoAdmin().from("shop_packages").select("image").eq("id", plan.id).maybeSingle();
-    plan = { ...plan, image: String(data?.image || "") };
-    if (!plan.image) return NextResponse.json({ error: "Photo missing" }, { status: 400 });
-  }
+
+  const saved = await savePackagePhoto("shop", plan.id, plan.image);
+  if (!saved.ok) return NextResponse.json({ error: saved.error }, { status: 400 });
+
+  const imageRef =
+    saved.fallbackRow && saved.image.startsWith("data:image/")
+      ? saved.image
+      : packageImageRef("shop", plan.id, saved.image.startsWith("http") ? saved.image : undefined);
   try {
-    const { error } = await zuvoAdmin().from("shop_packages").upsert(toRow(plan));
+    const { error } = await zuvoAdmin().from("shop_packages").upsert(toRow(plan, imageRef));
     if (error) throw error;
     return NextResponse.json({
       ok: true,
-      package: { ...plan, image: `/api/shop-photo?id=${encodeURIComponent(plan.id)}` },
+      package: { ...plan, image: imageRef },
     });
   } catch (error) {
-    const message =
-      error && typeof error === "object" && "message" in error
-        ? String((error as { message: string }).message)
-        : error instanceof Error
-          ? error.message
-          : "Zuvo write failed";
+    const message = error instanceof Error ? error.message : "Zuvo write failed";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
@@ -103,6 +105,7 @@ export async function DELETE(request: Request) {
   const id = new URL(request.url).searchParams.get("id") || "";
   if (!id) return NextResponse.json({ error: "required" }, { status: 400 });
   try {
+    await zuvoAdmin().from("package_photos").delete().eq("id", id).eq("catalog", "shop");
     const { error } = await zuvoAdmin().from("shop_packages").delete().eq("id", id);
     if (error) throw error;
     return NextResponse.json({ ok: true });

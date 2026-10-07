@@ -8,7 +8,7 @@ export function PhotoField({
   onChange,
   onError,
   label = "Car photo",
-  hint = "JPG, PNG or WEBP, up to 4 MB. Photo is stored on the package row in the car_packages table.",
+  hint = "JPG, PNG or WEBP, up to 4 MB. Saved in Storage bucket package-photos (separate from the package row).",
 }: {
   value: string;
   onChange: (url: string) => void;
@@ -18,6 +18,7 @@ export function PhotoField({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const hasPhoto = isPackageImage(value);
 
   async function onFile(file: File | undefined) {
     if (!file) return;
@@ -26,7 +27,6 @@ export function PhotoField({
       return;
     }
     setBusy(true);
-    // Prefer DB storage: encode photo as data URL so package row keeps the image.
     const reader = new FileReader();
     reader.onload = () => {
       setBusy(false);
@@ -72,7 +72,7 @@ export function PhotoField({
             disabled={busy}
             onClick={() => inputRef.current?.click()}
           >
-            {busy ? "Uploading…" : "Upload photo"}
+            {busy ? "Reading…" : hasPhoto ? "Change photo" : "Add photo"}
           </button>
           <p className="text-[12px] leading-5 text-white/40">
             {hint}

@@ -4,102 +4,136 @@ import { useEffect, useState } from "react";
 import { AddPanel } from "@/components/AddPanel";
 import { AdminShell } from "@/components/AdminShell";
 import { useToast } from "@/components/Feedback";
-import { fetchOpsStore, getStore, nid, patchStore, type CoinRow } from "@/lib/store";
+import { nid, type CoinRow } from "@/lib/store";
 
 export default function Page() {
   const { toast, node } = useToast();
   const [rows, setRows] = useState<CoinRow[]>([]);
+  const [busy, setBusy] = useState(false);
   const [name, setName] = useState("");
   const [network, setNetwork] = useState("");
   const [min, setMin] = useState("10");
   const [address, setAddress] = useState("");
 
-  useEffect(() => {
-    void fetchOpsStore().then((store) => setRows(store.coins));
-  }, []);
-
-  function commit(update: (store: ReturnType<typeof getStore>) => void, audit: { action: string; target: string }) {
-    const store = patchStore(update, audit);
-    setRows(store.coins);
+  async function load() {
+    const res = await fetch("/api/pay-rails", { cache: "no-store" });
+    const data = (await res.json()) as { coins?: CoinRow[]; error?: string };
+    if (!res.ok) {
+      toast(data.error || "Could not load pay_rails");
+      return;
+    }
+    setRows(Array.isArray(data.coins) ? data.coins : []);
   }
 
-  function setField(id: string, key: keyof CoinRow, value: string | boolean) {
-    commit((s) => {
-      const c = s.coins.find((x) => x.id === id);
-      if (!c) return;
-      (c as Record<string, unknown>)[key] = value;
-    }, { action: `coin_${String(key)}`, target: id });
+  useEffect(() => {
+    void load();
+  }, []);
+
+  async function saveCoin(coin: CoinRow, message?: string) {
+    setBusy(true);
+    try {
+      const res = await fetch("/api/pay-rails", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(coin),
+      });
+      const data = (await res.json()) as { coin?: CoinRow; error?: string };
+      if (!res.ok || !data.coin) {
+        toast(data.error || "Save to database failed");
+        return;
+      }
+      setRows((prev) => {
+        const rest = prev.filter((r) => r.id !== data.coin!.id);
+        return [...rest, data.coin!].sort((a, b) => a.id.localeCompare(b.id));
+      });
+      if (message) toast(message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function patch(id: string, patch: Partial<CoinRow>, message?: string) {
+    const current = rows.find((r) => r.id === id);
+    if (!current) return;
+    await saveCoin({ ...current, ...patch }, message);
   }
 
   return (
     <AdminShell title="Receiving accounts">
       {node}
       <p className="mb-4 max-w-3xl text-[13px] leading-5 text-white/50">
-        Put the company bank or USDT wallet here. Investors pay these accounts. After they submit a deposit, approve it on Recharges to credit their invest wallet.
+        Every field on these cards writes to Zuvo table <strong className="text-white/70">pay_rails</strong> (bank name,
+        title, account, IBAN, SWIFT, branch, instructions). Member Fund wallet reads this table live.
       </p>
       <AddPanel
         title="Add currency"
-        hint="Example: PKR with your bank IBAN, or USDT with your wallet."
-        submit="Add currency"
+        hint="Saved as one row in pay_rails. Example: PKR with your bank IBAN, or USDT with your wallet."
+        submit="Save to database"
         onSubmit={() => {
+          if (busy) return;
           if (!name.trim()) {
             toast("Currency name is required");
             return;
           }
           const id =
             name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || nid("coin");
-          if (getStore().coins.some((c) => c.id === id || c.name.toUpperCase() === name.trim().toUpperCase())) {
+          if (rows.some((c) => c.id === id || c.name.toUpperCase() === name.trim().toUpperCase())) {
             toast("That currency already exists");
             return;
           }
           const crypto = id === "usdt";
-          commit(
-            (s) => {
-              s.coins.push({
-                id,
-                name: name.trim().toUpperCase(),
-                network: network.trim() || (crypto ? "Tether" : "Bank"),
-                min: min.trim() || "10",
-                address: address.trim(),
-                enabled: true,
-                payKind: crypto ? "crypto" : "bank",
-                bankName: "",
-                accountName: "",
-                accountNumber: crypto ? "" : address.trim(),
-                iban: "",
-                swift: "",
-                branch: "",
-                instructions: "",
-              });
+          void saveCoin(
+            {
+              id,
+              name: name.trim().toUpperCase(),
+              network: network.trim() || (crypto ? "Tether" : "Bank"),
+              min: min.trim() || "10",
+              address: address.trim(),
+              enabled: true,
+              payKind: crypto ? "crypto" : "bank",
+              bankName: "",
+              accountName: "",
+              accountNumber: crypto ? "" : address.trim(),
+              iban: "",
+              swift: "",
+              branch: "",
+              instructions: "",
             },
-            { action: "coin_add", target: name.trim().toUpperCase() }
+            "Saved to pay_rails"
           );
           setName("");
           setNetwork("");
           setMin("10");
           setAddress("");
-          toast("Currency added");
         }}
       >
         <input value={name} onChange={(e) => setName(e.target.value)} className="admin-input" placeholder="Currency e.g. PKR" />
         <input value={network} onChange={(e) => setNetwork(e.target.value)} className="admin-input" placeholder="Country / network e.g. Pakistan" />
         <input value={min} onChange={(e) => setMin(e.target.value)} className="admin-input" placeholder="Min fund" />
-        <input value={address} onChange={(e) => setAddress(e.target.value)} className="admin-input md:col-span-2 font-mono text-[12px]" placeholder="Wallet or account number" />
+        <input
+          value={address}
+          onChange={(e) => setAddress(e.target.value)}
+          className="admin-input md:col-span-2 font-mono text-[12px]"
+          placeholder="Wallet or account number"
+        />
       </AddPanel>
       <div className="grid gap-3 lg:grid-cols-2">
         {rows.map((row) => {
-          const crypto = (row.payKind || row.id) === "crypto" || row.id === "usdt";
+          const crypto = row.payKind === "crypto" || row.id === "usdt";
           return (
             <article key={row.id} className="admin-card space-y-3 p-5">
               <div className="flex items-center justify-between gap-2">
                 <div>
-                  <p className="text-[11px] uppercase tracking-[0.14em] text-white/40">{crypto ? "Crypto wallet" : "Bank account"}</p>
+                  <p className="text-[11px] uppercase tracking-[0.14em] text-white/40">
+                    {crypto ? "Crypto wallet" : "Bank account"} · <span className="text-white/30">pay_rails</span>
+                  </p>
                   <input
                     defaultValue={row.name}
                     className="admin-input mt-1 h-10 max-w-[140px] font-semibold"
+                    disabled={busy}
                     onBlur={(e) => {
                       const next = e.target.value.trim().toUpperCase();
-                      if (next) setField(row.id, "name", next);
+                      if (next && next !== row.name) void patch(row.id, { name: next }, "Name saved");
                     }}
                   />
                 </div>
@@ -107,21 +141,35 @@ export default function Page() {
                   <button
                     type="button"
                     className="ghost-btn"
-                    onClick={() => setField(row.id, "enabled", !row.enabled)}
+                    disabled={busy}
+                    onClick={() => void patch(row.id, { enabled: !row.enabled }, row.enabled ? "Hidden from wallet" : "On wallet")}
                   >
                     {row.enabled ? "On wallet" : "Hidden"}
                   </button>
                   <button
                     type="button"
                     className="ghost-btn"
+                    disabled={busy}
                     onClick={() => {
                       if (rows.length < 2) {
                         toast("Keep at least one currency");
                         return;
                       }
-                      commit((s) => {
-                        s.coins = s.coins.filter((x) => x.id !== row.id);
-                      }, { action: "coin_delete", target: row.id });
+                      void (async () => {
+                        setBusy(true);
+                        try {
+                          const res = await fetch(`/api/pay-rails?id=${encodeURIComponent(row.id)}`, { method: "DELETE" });
+                          const data = (await res.json()) as { error?: string };
+                          if (!res.ok) {
+                            toast(data.error || "Delete failed");
+                            return;
+                          }
+                          await load();
+                          toast("Removed from pay_rails");
+                        } finally {
+                          setBusy(false);
+                        }
+                      })();
                     }}
                   >
                     Delete
@@ -134,7 +182,11 @@ export default function Page() {
                   <input
                     defaultValue={row.network}
                     className="admin-input mt-1"
-                    onBlur={(e) => setField(row.id, "network", e.target.value.trim() || "Bank")}
+                    disabled={busy}
+                    onBlur={(e) => {
+                      const v = e.target.value.trim() || "Bank";
+                      if (v !== row.network) void patch(row.id, { network: v }, "Saved");
+                    }}
                   />
                 </label>
                 <label className="block text-[12px] text-white/50">
@@ -142,7 +194,11 @@ export default function Page() {
                   <input
                     defaultValue={row.min}
                     className="admin-input mt-1"
-                    onBlur={(e) => setField(row.id, "min", e.target.value.trim() || "1")}
+                    disabled={busy}
+                    onBlur={(e) => {
+                      const v = e.target.value.trim() || "1";
+                      if (v !== row.min) void patch(row.id, { min: v }, "Saved");
+                    }}
                   />
                 </label>
               </div>
@@ -153,7 +209,11 @@ export default function Page() {
                     defaultValue={row.address}
                     className="admin-input mt-1 font-mono text-[12px]"
                     placeholder="TRC20 / ERC20 address"
-                    onBlur={(e) => setField(row.id, "address", e.target.value.trim())}
+                    disabled={busy}
+                    onBlur={(e) => {
+                      const v = e.target.value.trim();
+                      if (v !== row.address) void patch(row.id, { address: v }, "Wallet saved to DB");
+                    }}
                   />
                 </label>
               ) : (
@@ -164,7 +224,11 @@ export default function Page() {
                       defaultValue={row.bankName}
                       className="admin-input mt-1"
                       placeholder="HBL, Meezan, Emirates NBD…"
-                      onBlur={(e) => setField(row.id, "bankName", e.target.value.trim())}
+                      disabled={busy}
+                      onBlur={(e) => {
+                        const v = e.target.value.trim();
+                        if (v !== (row.bankName || "")) void patch(row.id, { bankName: v }, "Bank name saved");
+                      }}
                     />
                   </label>
                   <label className="block text-[12px] text-white/50">
@@ -173,7 +237,11 @@ export default function Page() {
                       defaultValue={row.accountName}
                       className="admin-input mt-1"
                       placeholder="Company / account holder"
-                      onBlur={(e) => setField(row.id, "accountName", e.target.value.trim())}
+                      disabled={busy}
+                      onBlur={(e) => {
+                        const v = e.target.value.trim();
+                        if (v !== (row.accountName || "")) void patch(row.id, { accountName: v }, "Account title saved");
+                      }}
                     />
                   </label>
                   <label className="block text-[12px] text-white/50">
@@ -182,10 +250,12 @@ export default function Page() {
                       defaultValue={row.accountNumber || row.address}
                       className="admin-input mt-1 font-mono text-[12px]"
                       placeholder="Bank account number"
+                      disabled={busy}
                       onBlur={(e) => {
                         const v = e.target.value.trim();
-                        setField(row.id, "accountNumber", v);
-                        setField(row.id, "address", v);
+                        if (v !== (row.accountNumber || row.address || "")) {
+                          void patch(row.id, { accountNumber: v, address: v }, "Account number saved");
+                        }
                       }}
                     />
                   </label>
@@ -195,7 +265,11 @@ export default function Page() {
                       <input
                         defaultValue={row.iban}
                         className="admin-input mt-1 font-mono text-[12px]"
-                        onBlur={(e) => setField(row.id, "iban", e.target.value.trim())}
+                        disabled={busy}
+                        onBlur={(e) => {
+                          const v = e.target.value.trim();
+                          if (v !== (row.iban || "")) void patch(row.id, { iban: v }, "IBAN saved");
+                        }}
                       />
                     </label>
                     <label className="block text-[12px] text-white/50">
@@ -203,7 +277,11 @@ export default function Page() {
                       <input
                         defaultValue={row.swift}
                         className="admin-input mt-1 font-mono text-[12px]"
-                        onBlur={(e) => setField(row.id, "swift", e.target.value.trim())}
+                        disabled={busy}
+                        onBlur={(e) => {
+                          const v = e.target.value.trim();
+                          if (v !== (row.swift || "")) void patch(row.id, { swift: v }, "SWIFT saved");
+                        }}
                       />
                     </label>
                   </div>
@@ -212,7 +290,11 @@ export default function Page() {
                     <input
                       defaultValue={row.branch}
                       className="admin-input mt-1"
-                      onBlur={(e) => setField(row.id, "branch", e.target.value.trim())}
+                      disabled={busy}
+                      onBlur={(e) => {
+                        const v = e.target.value.trim();
+                        if (v !== (row.branch || "")) void patch(row.id, { branch: v }, "Branch saved");
+                      }}
                     />
                   </label>
                 </>
@@ -223,7 +305,11 @@ export default function Page() {
                   defaultValue={row.instructions}
                   className="admin-input mt-1 min-h-[72px] py-2"
                   placeholder="e.g. Use your email as transfer reference."
-                  onBlur={(e) => setField(row.id, "instructions", e.target.value.trim())}
+                  disabled={busy}
+                  onBlur={(e) => {
+                    const v = e.target.value.trim();
+                    if (v !== (row.instructions || "")) void patch(row.id, { instructions: v }, "Instructions saved");
+                  }}
                 />
               </label>
             </article>

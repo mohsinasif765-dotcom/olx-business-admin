@@ -34,7 +34,7 @@ import {
 } from "@/lib/db-tables";
 
 let opsHold: { at: number; body: { store: Store | null } } | null = null;
-const OPS_TTL = 4000;
+const OPS_TTL = 60_000;
 
 function publicStore(store: Store) {
   return { ...store, adminAuth: { user: store.adminAuth?.user || "admin", pass: "" } };
@@ -42,6 +42,9 @@ function publicStore(store: Store) {
 
 async function loadStore(): Promise<Store> {
   const db = zuvoAdmin();
+  const membersWithName = db
+    .from("members")
+    .select("id,account,name,vip,invite,upline,invest,brokerage,status,joined");
   const [
     settings,
     auth,
@@ -58,6 +61,7 @@ async function loadStore(): Promise<Store> {
     audit,
     activityState,
     packsRes,
+    membersFirst,
   ] = await Promise.all([
     readSettings(),
     readAdminAuth(),
@@ -73,11 +77,10 @@ async function loadStore(): Promise<Store> {
     readShopHoldings(),
     readAudit(),
     readActivityState(),
-    db.from("car_packages").select("id,name,kind,invest,returns,term,image,enabled"),
+    db.from("car_packages").select("id,name,kind,invest,returns,term,enabled"),
+    membersWithName,
   ]);
-  let membersRes = await db
-    .from("members")
-    .select("id,account,name,vip,invite,upline,invest,brokerage,status,joined");
+  let membersRes = membersFirst;
   if (membersRes.error) {
     membersRes = await db.from("members").select("id,account,vip,invite,upline,invest,brokerage,status,joined");
   }
@@ -128,7 +131,7 @@ async function loadStore(): Promise<Store> {
     income: String(p.returns),
     days: Number(String(p.term).split(" ")[0]) || 30,
     kind: p.kind === "used" ? "used" : "new",
-    image: String(p.image),
+    image: `/api/package-photo?id=${encodeURIComponent(String(p.id))}`,
     enabled: p.enabled !== false,
   }));
   return store;

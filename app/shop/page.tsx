@@ -262,7 +262,7 @@ export default function Page() {
             <button type="submit" className="admin-btn px-8" disabled={busy}>
               {busy ? "Saving…" : `Publish ${guide.badge.toLowerCase()} package`}
             </button>
-            <p className="text-[12px] text-white/40">Writes one row to shop_packages · visible on member Shop immediately.</p>
+            <p className="text-[12px] text-white/40">Details → shop_packages · photos → Storage package-photos · live on member Shop.</p>
           </div>
         </div>
       </form>
@@ -318,7 +318,7 @@ export default function Page() {
                     onError={toast}
                     onChange={(url) => void save({ ...plan, image: url })}
                     label={plan.kind === "electronics" ? "Electronics photo" : "Jewelry photo"}
-                    hint="Photo is stored on this package row in shop_packages."
+                    hint="Photo is saved in Storage bucket package-photos."
                   />
                   <label className="field-label">Category</label>
                   <select

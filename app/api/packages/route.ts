@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { listCatalogPhotoUrls, packageImageRef, savePackagePhoto } from "@/lib/package-photos";
 import { zuvoAdmin } from "@/lib/zuvo";
 import type { VipPlan } from "@/lib/store";
 
@@ -7,7 +8,7 @@ function daysFromTerm(term: string) {
   return Number.isFinite(n) && n > 0 ? n : 30;
 }
 
-function toVip(row: Record<string, unknown>): VipPlan {
+function toVip(row: Record<string, unknown>, photoUrls: Record<string, string>): VipPlan {
   const id = String(row.id);
   return {
     id,
@@ -16,12 +17,12 @@ function toVip(row: Record<string, unknown>): VipPlan {
     income: String(row.returns || ""),
     days: daysFromTerm(String(row.term || "30")),
     kind: row.kind === "used" ? "used" : "new",
-    image: `/api/package-photo?id=${encodeURIComponent(id)}`,
+    image: packageImageRef("car", id, photoUrls[id]),
     enabled: row.enabled !== false,
   };
 }
 
-function toRow(plan: VipPlan) {
+function toRow(plan: VipPlan, imageRef: string) {
   return {
     id: plan.id,
     name: plan.name,
@@ -29,7 +30,7 @@ function toRow(plan: VipPlan) {
     invest: plan.range,
     returns: plan.income,
     term: `${Number(plan.days) || 30} days`,
-    image: plan.image,
+    image: imageRef,
     enabled: plan.enabled !== false,
     updated_at: new Date().toISOString(),
   };
@@ -54,7 +55,10 @@ export async function GET() {
       error = retry.error;
     }
     if (error) throw error;
-    return NextResponse.json({ packages: (data || []).map((row) => toVip(row as Record<string, unknown>)) });
+    const photoUrls = await listCatalogPhotoUrls("car");
+    return NextResponse.json({
+      packages: (data || []).map((row) => toVip(row as Record<string, unknown>, photoUrls)),
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Zuvo read failed";
     return NextResponse.json({ error: message, packages: [] }, { status: 500 });
@@ -71,15 +75,18 @@ export async function POST(request: Request) {
   if (!plan?.id || !plan.name || !plan.range || !plan.income || !plan.image) {
     return NextResponse.json({ error: "Name, invest, return, and photo are required" }, { status: 400 });
   }
-  if (plan.image.startsWith("/api/package-photo")) {
-    const { data } = await zuvoAdmin().from("car_packages").select("image").eq("id", plan.id).maybeSingle();
-    plan = { ...plan, image: String(data?.image || "") };
-    if (!plan.image) return NextResponse.json({ error: "Photo missing" }, { status: 400 });
-  }
+
+  const saved = await savePackagePhoto("car", plan.id, plan.image);
+  if (!saved.ok) return NextResponse.json({ error: saved.error }, { status: 400 });
+
+  const imageRef =
+    saved.fallbackRow && saved.image.startsWith("data:image/")
+      ? saved.image
+      : packageImageRef("car", plan.id, saved.image.startsWith("http") ? saved.image : undefined);
   try {
-    const { error } = await zuvoAdmin().from("car_packages").upsert(toRow(plan));
+    const { error } = await zuvoAdmin().from("car_packages").upsert(toRow(plan, imageRef));
     if (error) throw error;
-    return NextResponse.json({ ok: true, package: plan });
+    return NextResponse.json({ ok: true, package: { ...plan, image: imageRef } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Zuvo write failed";
     return NextResponse.json({ error: message }, { status: 500 });
@@ -90,6 +97,7 @@ export async function DELETE(request: Request) {
   const id = new URL(request.url).searchParams.get("id") || "";
   if (!id) return NextResponse.json({ error: "required" }, { status: 400 });
   try {
+    await zuvoAdmin().from("package_photos").delete().eq("id", id).eq("catalog", "car");
     const { error } = await zuvoAdmin().from("car_packages").delete().eq("id", id);
     if (error) throw error;
     return NextResponse.json({ ok: true });

@@ -182,6 +182,15 @@ create table if not exists public.ledger_tx (
 );
 
 alter table public.recharges add column if not exists slip_url text not null default '';
+
+create table if not exists public.deposit_slips (
+  id text primary key,
+  account text not null default '',
+  image text not null,
+  created_at timestamptz not null default now()
+);
+alter table public.deposit_slips enable row level security;
+grant all on public.deposit_slips to service_role;
 alter table public.site_settings add column if not exists signup_bonus numeric not null default 0;
 alter table public.site_settings add column if not exists invite_bonus numeric not null default 0;
 alter table public.site_settings add column if not exists checkin_rewards text not null default '0.10,0.12,0.15,0.18,0.22,0.28,0.80';

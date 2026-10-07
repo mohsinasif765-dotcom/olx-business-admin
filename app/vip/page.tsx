@@ -19,6 +19,23 @@ export default function Page() {
   const [image, setImage] = useState(DEFAULT_CAR_IMAGE.new);
   const [busy, setBusy] = useState(false);
 
+  async function migratePhotos() {
+    setBusy(true);
+    try {
+      const res = await fetch("/api/migrate-package-photos", { method: "POST" });
+      const data = (await res.json()) as { car?: number; shop?: number; error?: string; errors?: string[] };
+      if (!res.ok) {
+        toast(data.error || "Photo migrate failed");
+        return;
+      }
+      await load();
+      toast(`Photos moved off package rows → Storage (cars ${data.car || 0}, shop ${data.shop || 0})`);
+      if (data.errors?.length) toast(data.errors.slice(0, 2).join(" · "));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function load() {
     const res = await fetch("/api/packages", { cache: "no-store" });
     const data = (await res.json()) as { packages?: VipPlan[]; error?: string };
@@ -74,7 +91,7 @@ export default function Page() {
       {node}
       <AddPanel
         title="Add car package"
-        hint="Saved to Zuvo table car_packages (name, photo, stock, invest, return, term). Member Cars page reads this table."
+        hint="Package details → car_packages. Photos → separate Storage bucket package-photos (not on the package row)."
         submit="Save to database"
         onSubmit={() => {
           if (busy) return;
@@ -142,9 +159,14 @@ export default function Page() {
           <input value={days} onChange={(e) => setDays(e.target.value)} className="admin-input" placeholder="30" />
         </div>
       </AddPanel>
-      <p className="mb-4 text-[13px] leading-6 text-white/50">
-        Each card is one row in <strong>car_packages</strong>. Enabled rows show on the member New / Used Cars tabs.
-      </p>
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <p className="text-[13px] leading-6 text-white/50">
+          Packages stay in <strong>car_packages</strong>. Photos are stored separately in Storage <strong>package-photos</strong>.
+        </p>
+        <button type="button" className="admin-btn px-4" disabled={busy} onClick={() => void migratePhotos()}>
+          Move old photos out of package rows
+        </button>
+      </div>
       <div className="grid gap-3 md:grid-cols-2">
         {rows.map((plan) => (
           <article key={plan.id} className="admin-card space-y-2 overflow-hidden p-0">
