@@ -273,6 +273,18 @@ export type Settings = {
   walletMode: WalletMode;
   /** Bank withdraw estimated PKR = amount × rate (Trade FX style). */
   usdtToPkrRate: number;
+  /** About Us page (member /about) — editable from Settings. */
+  aboutTagline: string;
+  aboutBody: string;
+  aboutStep1: string;
+  aboutStep2: string;
+  aboutStep3: string;
+  aboutVersion: string;
+  companyName: string;
+  companyAddress: string;
+  companyNo: string;
+  companyRegDate: string;
+  companyIssued: string;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -294,6 +306,18 @@ export const DEFAULT_SETTINGS: Settings = {
   commissionL3: 1,
   walletMode: "pkr",
   usdtToPkrRate: 280,
+  aboutTagline: "Car investment membership, built for clarity and control.",
+  aboutBody:
+    "OLX Business is a membership platform for structured vehicle investment. Members fund through approved channels, select a new or certified used car package, and receive returns according to the plan term — with wallet, team, and support in one place.",
+  aboutStep1: "Fund your wallet through the company bank or USDT account.",
+  aboutStep2: "Choose a new or certified used vehicle package that fits your plan.",
+  aboutStep3: "Track returns, team, and support in one secure membership app.",
+  aboutVersion: "Version 1.0",
+  companyName: "OLX Business Digital Ltd",
+  companyAddress: "Office 2208, Bay View Tower, Business Bay, Dubai, United Arab Emirates",
+  companyNo: "OB-2026-8841",
+  companyRegDate: "12 Jan 2026",
+  companyIssued: "05 Oct 2026",
 };
 
 const KEY = "olx-admin-v9";
@@ -407,6 +431,17 @@ function normalizeSettings(
     payoutFee: Number(raw.payoutFee ?? raw.bep20Fee ?? base.payoutFee),
     walletMode: normalizeWalletMode(raw.walletMode ?? base.walletMode),
     usdtToPkrRate: Number(raw.usdtToPkrRate ?? base.usdtToPkrRate) || 280,
+    aboutTagline: String(raw.aboutTagline ?? base.aboutTagline),
+    aboutBody: String(raw.aboutBody ?? base.aboutBody),
+    aboutStep1: String(raw.aboutStep1 ?? base.aboutStep1),
+    aboutStep2: String(raw.aboutStep2 ?? base.aboutStep2),
+    aboutStep3: String(raw.aboutStep3 ?? base.aboutStep3),
+    aboutVersion: String(raw.aboutVersion ?? base.aboutVersion),
+    companyName: String(raw.companyName ?? base.companyName),
+    companyAddress: String(raw.companyAddress ?? base.companyAddress),
+    companyNo: String(raw.companyNo ?? base.companyNo),
+    companyRegDate: String(raw.companyRegDate ?? base.companyRegDate),
+    companyIssued: String(raw.companyIssued ?? base.companyIssued),
   };
 }
 

@@ -52,6 +52,17 @@ export async function PUT(request: Request) {
       commissionL3: Number(body.commissionL3 ?? current.commissionL3),
       walletMode: asWalletMode(body.walletMode ?? current.walletMode),
       usdtToPkrRate: Number(body.usdtToPkrRate ?? current.usdtToPkrRate) || 280,
+      aboutTagline: String(body.aboutTagline ?? current.aboutTagline),
+      aboutBody: String(body.aboutBody ?? current.aboutBody),
+      aboutStep1: String(body.aboutStep1 ?? current.aboutStep1),
+      aboutStep2: String(body.aboutStep2 ?? current.aboutStep2),
+      aboutStep3: String(body.aboutStep3 ?? current.aboutStep3),
+      aboutVersion: String(body.aboutVersion ?? current.aboutVersion).trim() || "Version 1.0",
+      companyName: String(body.companyName ?? current.companyName).trim() || "OLX Business Digital Ltd",
+      companyAddress: String(body.companyAddress ?? current.companyAddress).trim(),
+      companyNo: String(body.companyNo ?? current.companyNo).trim(),
+      companyRegDate: String(body.companyRegDate ?? current.companyRegDate).trim(),
+      companyIssued: String(body.companyIssued ?? current.companyIssued).trim(),
     };
     await writeSettings(next);
     return NextResponse.json({ ok: true, settings: next });

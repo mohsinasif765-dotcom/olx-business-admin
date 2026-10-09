@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, Suspense, useEffect, useState } from "react";
 import { NavIcon } from "@/components/NavIcon";
+import { SupportNotifyHost, useSupportBadge } from "@/components/SupportNotify";
 import { getAdminUsername, isAdminLoggedIn, logoutAdmin } from "@/lib/auth";
 
 const GROUPS = [
@@ -44,12 +45,21 @@ const GROUPS = [
   },
 ] as const;
 
-export function AdminShell({ title, children }: { title: string; children: ReactNode }) {
+export function AdminShell({
+  title,
+  children,
+  flush = false,
+}: {
+  title: string;
+  children: ReactNode;
+  flush?: boolean;
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const [ready, setReady] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [adminName, setAdminName] = useState("admin");
+  const supportBadge = useSupportBadge();
 
   useEffect(() => {
     if (!isAdminLoggedIn()) {
@@ -87,10 +97,12 @@ export function AdminShell({ title, children }: { title: string; children: React
             <p className="nav-label">{group.label}</p>
             {group.items.map((item) => {
               const on = pathname === item.href || pathname.startsWith(`${item.href}/`);
+              const badge = item.href === "/support" ? supportBadge : 0;
               return (
                 <Link key={item.href} href={item.href} className={`admin-nav ${on ? "is-on" : ""}`}>
                   <NavIcon name={item.icon} />
-                  {item.label}
+                  <span className="flex-1">{item.label}</span>
+                  {badge > 0 ? <span className="nav-badge">{badge > 99 ? "99+" : badge}</span> : null}
                 </Link>
               );
             })}
@@ -117,7 +129,7 @@ export function AdminShell({ title, children }: { title: string; children: React
     <div className="admin-app">
       {menuOpen ? <button type="button" className="admin-scrim" aria-label="Close menu" onClick={() => setMenuOpen(false)} /> : null}
       <aside className={`admin-side ${menuOpen ? "is-open" : ""}`}>{nav}</aside>
-      <div className="min-w-0">
+      <div className="min-w-0 flex min-h-screen flex-col">
         <header className="admin-top">
           <div className="flex min-w-0 items-center gap-2">
             <button type="button" className="menu-btn" aria-label="Open menu" onClick={() => setMenuOpen(true)}>
@@ -126,6 +138,11 @@ export function AdminShell({ title, children }: { title: string; children: React
               </svg>
             </button>
             <h1 className="truncate text-[18px] font-semibold tracking-tight text-[#f4f5f8]">{title}</h1>
+            {supportBadge > 0 && pathname !== "/support" ? (
+              <Link href="/support" className="support-top-pill">
+                {supportBadge} new
+              </Link>
+            ) : null}
           </div>
           <div className="flex min-w-0 items-center">
             <span className="env-pill">
@@ -140,8 +157,11 @@ export function AdminShell({ title, children }: { title: string; children: React
             </span>
           </div>
         </header>
-        <main className="admin-main">{children}</main>
+        <main className={`admin-main ${flush ? "is-flush" : ""}`}>{children}</main>
       </div>
+      <Suspense fallback={null}>
+        <SupportNotifyHost />
+      </Suspense>
     </div>
   );
 }

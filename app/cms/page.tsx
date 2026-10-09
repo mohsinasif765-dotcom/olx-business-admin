@@ -51,7 +51,10 @@ export default function Page() {
         <input value={slug} onChange={(e) => setSlug(e.target.value)} className="admin-input" placeholder="Slug e.g. terms" />
         <textarea value={body} onChange={(e) => setBody(e.target.value)} className="admin-input md:col-span-2" placeholder="Body copy" />
       </AddPanel>
-      <p className="mb-4 text-[13px] text-white/50">Saved to Zuvo. Member About, agreement, privacy, FAQ intro, and support read these pages.</p>
+      <p className="mb-4 text-[13px] text-white/50">
+        Saved to Zuvo. Agreement, privacy, FAQ intro, and support use these pages. About Us story / company details
+        are edited under <strong className="text-white/70">Settings → About Us</strong> (CMS <code className="text-white/55">about</code> body is only a fallback).
+      </p>
       <div className="space-y-4">
         {pages.map((page) => (
           <article key={page.slug} className="admin-card space-y-2 p-4">

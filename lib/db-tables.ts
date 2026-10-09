@@ -23,6 +23,17 @@ export type SettingsRow = {
   walletMode: WalletMode;
   /** Trade FX–style: Bank withdraw estimated PKR = USDT × rate. */
   usdtToPkrRate: number;
+  aboutTagline: string;
+  aboutBody: string;
+  aboutStep1: string;
+  aboutStep2: string;
+  aboutStep3: string;
+  aboutVersion: string;
+  companyName: string;
+  companyAddress: string;
+  companyNo: string;
+  companyRegDate: string;
+  companyIssued: string;
 };
 
 export type CoinRow = {
@@ -153,6 +164,21 @@ export function mapSettings(row: Record<string, unknown> | null | undefined): Se
       row.usdt_to_pkr_rate == null || row.usdt_to_pkr_rate === ""
         ? 280
         : money(row.usdt_to_pkr_rate ?? row.usdtToPkrRate) || 280,
+    aboutTagline: String(row.about_tagline ?? row.aboutTagline ?? ""),
+    aboutBody: String(row.about_body ?? row.aboutBody ?? ""),
+    aboutStep1: String(row.about_step1 ?? row.aboutStep1 ?? ""),
+    aboutStep2: String(row.about_step2 ?? row.aboutStep2 ?? ""),
+    aboutStep3: String(row.about_step3 ?? row.aboutStep3 ?? ""),
+    aboutVersion: String(row.about_version ?? row.aboutVersion ?? "Version 1.0"),
+    companyName: String(row.company_name ?? row.companyName ?? "OLX Business Digital Ltd"),
+    companyAddress: String(
+      row.company_address ??
+        row.companyAddress ??
+        "Office 2208, Bay View Tower, Business Bay, Dubai, United Arab Emirates",
+    ),
+    companyNo: String(row.company_no ?? row.companyNo ?? "OB-2026-8841"),
+    companyRegDate: String(row.company_reg_date ?? row.companyRegDate ?? "12 Jan 2026"),
+    companyIssued: String(row.company_issued ?? row.companyIssued ?? "05 Oct 2026"),
   };
 }
 
@@ -177,6 +203,17 @@ export function settingsToRow(s: SettingsRow) {
     commission_l3: s.commissionL3,
     wallet_mode: mapWalletMode(s.walletMode),
     usdt_to_pkr_rate: money(s.usdtToPkrRate) || 280,
+    about_tagline: s.aboutTagline,
+    about_body: s.aboutBody,
+    about_step1: s.aboutStep1,
+    about_step2: s.aboutStep2,
+    about_step3: s.aboutStep3,
+    about_version: s.aboutVersion,
+    company_name: s.companyName,
+    company_address: s.companyAddress,
+    company_no: s.companyNo,
+    company_reg_date: s.companyRegDate,
+    company_issued: s.companyIssued,
     updated_at: new Date().toISOString(),
   };
 }

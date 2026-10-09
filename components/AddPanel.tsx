@@ -21,14 +21,14 @@ export function AddPanel({
   }
 
   return (
-    <form className="admin-card mb-4 grid gap-3 p-5 md:grid-cols-2" onSubmit={handle}>
+    <form className="admin-card mb-4 grid gap-3 p-4 sm:p-5 md:grid-cols-2" onSubmit={handle}>
       <div className="md:col-span-2">
         <h2 className="text-[15px] font-semibold">{title}</h2>
         {hint ? <p className="mt-1 text-[12px] leading-5 text-white/42">{hint}</p> : null}
       </div>
       {children}
       <div className="md:col-span-2">
-        <button type="submit" className="admin-btn px-8">
+        <button type="submit" className="admin-btn w-full sm:w-auto px-8">
           {submit}
         </button>
       </div>
