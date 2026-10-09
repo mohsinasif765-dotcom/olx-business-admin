@@ -1,5 +1,7 @@
 import { zuvoAdmin } from "@/lib/zuvo";
 
+export type WalletMode = "pkr" | "usdt" | "dual";
+
 export type SettingsRow = {
   siteName: string;
   telegram: string;
@@ -17,6 +19,10 @@ export type SettingsRow = {
   commissionL1: number;
   commissionL2: number;
   commissionL3: number;
+  /** Member app currency policy: PKR only, USDT only, or both rails. */
+  walletMode: WalletMode;
+  /** Trade FX–style: Bank withdraw estimated PKR = USDT × rate. */
+  usdtToPkrRate: number;
 };
 
 export type CoinRow = {
@@ -116,6 +122,13 @@ export async function replaceKeyed(table: string, pk: string, rows: Record<strin
   if (error) throw error;
 }
 
+function mapWalletMode(value: unknown): WalletMode {
+  const mode = String(value || "pkr").toLowerCase();
+  if (mode === "usdt") return "usdt";
+  if (mode === "dual") return "dual";
+  return "pkr";
+}
+
 export function mapSettings(row: Record<string, unknown> | null | undefined): SettingsRow | null {
   if (!row) return null;
   return {
@@ -135,6 +148,11 @@ export function mapSettings(row: Record<string, unknown> | null | undefined): Se
     commissionL1: row.commission_l1 == null || row.commission_l1 === "" ? 15 : money(row.commission_l1),
     commissionL2: row.commission_l2 == null || row.commission_l2 === "" ? 3 : money(row.commission_l2),
     commissionL3: row.commission_l3 == null || row.commission_l3 === "" ? 1 : money(row.commission_l3),
+    walletMode: mapWalletMode(row.wallet_mode ?? row.walletMode),
+    usdtToPkrRate:
+      row.usdt_to_pkr_rate == null || row.usdt_to_pkr_rate === ""
+        ? 280
+        : money(row.usdt_to_pkr_rate ?? row.usdtToPkrRate) || 280,
   };
 }
 
@@ -157,6 +175,8 @@ export function settingsToRow(s: SettingsRow) {
     commission_l1: s.commissionL1,
     commission_l2: s.commissionL2,
     commission_l3: s.commissionL3,
+    wallet_mode: mapWalletMode(s.walletMode),
+    usdt_to_pkr_rate: money(s.usdtToPkrRate) || 280,
     updated_at: new Date().toISOString(),
   };
 }

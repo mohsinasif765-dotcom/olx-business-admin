@@ -1,9 +1,21 @@
 import { NextResponse } from "next/server";
-import { readSettings, writeSettings, type SettingsRow } from "@/lib/db-tables";
+import { readSettings, writeSettings, type SettingsRow, type WalletMode } from "@/lib/db-tables";
 import { DEFAULT_SETTINGS, type Settings } from "@/lib/store";
 
+function asWalletMode(value: unknown): WalletMode {
+  const mode = String(value || "pkr").toLowerCase();
+  if (mode === "usdt") return "usdt";
+  if (mode === "dual") return "dual";
+  return "pkr";
+}
+
 function asSettings(row: SettingsRow | null): Settings {
-  return { ...DEFAULT_SETTINGS, ...(row || {}) };
+  return {
+    ...DEFAULT_SETTINGS,
+    ...(row || {}),
+    walletMode: asWalletMode(row?.walletMode ?? DEFAULT_SETTINGS.walletMode),
+    usdtToPkrRate: Number(row?.usdtToPkrRate ?? DEFAULT_SETTINGS.usdtToPkrRate) || 280,
+  };
 }
 
 export async function GET() {
@@ -38,6 +50,8 @@ export async function PUT(request: Request) {
       commissionL1: Number(body.commissionL1 ?? current.commissionL1),
       commissionL2: Number(body.commissionL2 ?? current.commissionL2),
       commissionL3: Number(body.commissionL3 ?? current.commissionL3),
+      walletMode: asWalletMode(body.walletMode ?? current.walletMode),
+      usdtToPkrRate: Number(body.usdtToPkrRate ?? current.usdtToPkrRate) || 280,
     };
     await writeSettings(next);
     return NextResponse.json({ ok: true, settings: next });

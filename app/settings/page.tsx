@@ -258,6 +258,87 @@ export default function Page() {
 
         <section className="space-y-3 border-t border-[var(--line)] pt-5">
           <div>
+            <p className="settings-kicker">Currency</p>
+            <h2 className="text-[16px] font-semibold tracking-tight">Wallet operating mode</h2>
+            <p className="mt-1 text-[12px] text-[var(--muted)]">
+              Controls Home balance labels and Bank withdraw PKR estimate. Deposit methods on Fund wallet come from
+              Coins (all enabled rails) — enable/disable currencies there.
+            </p>
+          </div>
+          <div className="grid gap-2">
+            {(
+              [
+                {
+                  id: "pkr" as const,
+                  title: "PKR only",
+                  hint: "Pakistan bank / JazzCash rails. Home shows Rs. USDT hidden from members.",
+                },
+                {
+                  id: "usdt" as const,
+                  title: "USDT only",
+                  hint: "Crypto wallet rails only. Home shows USDT. PKR bank rails hidden from members.",
+                },
+                {
+                  id: "dual" as const,
+                  title: "PKR + USDT",
+                  hint: "Members can fund and withdraw with either currency (same wallet balance ledger).",
+                },
+              ] as const
+            ).map((opt) => {
+              const on = s.walletMode === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setS({ ...s, walletMode: opt.id })}
+                  className={`rounded-xl border px-4 py-3 text-left transition ${
+                    on
+                      ? "border-[#3b82f6] bg-[#3b82f6]/15"
+                      : "border-[var(--line)] bg-white/[0.02] hover:border-white/20"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-[13px] font-semibold text-white/95">{opt.title}</p>
+                    <span
+                      className={`h-4 w-4 shrink-0 rounded-full border-2 ${
+                        on ? "border-[#60a5fa] bg-[#3b82f6]" : "border-white/25"
+                      }`}
+                    />
+                  </div>
+                  <p className="mt-1 text-[11px] leading-4 text-[var(--muted)]">{opt.hint}</p>
+                </button>
+              );
+            })}
+          </div>
+          <p className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-[11px] leading-4 text-[var(--muted)]">
+            Preview: member home balances as{" "}
+            <strong className="text-white/80">
+              {s.walletMode === "usdt" ? "USDT" : s.walletMode === "dual" ? "Rs (dual rails)" : "Rs"}
+            </strong>
+            . Configure bank / USDT addresses under Coins.
+          </p>
+          {s.walletMode === "usdt" || s.walletMode === "dual" ? (
+            <label className="block text-[12px] text-[var(--muted)]">
+              USDT → PKR rate
+              <input
+                type="number"
+                min={1}
+                step="0.01"
+                value={s.usdtToPkrRate}
+                onChange={(e) => setS({ ...s, usdtToPkrRate: Number(e.target.value) || 280 })}
+                className="admin-input mt-1"
+                placeholder="280"
+              />
+              <span className="mt-1 block text-[11px] leading-4">
+                Bank withdraw shows estimated PKR = (amount − fee) × this rate. Balance stays in USDT when mode is
+                USDT or Dual.
+              </span>
+            </label>
+          ) : null}
+        </section>
+
+        <section className="space-y-3 border-t border-[var(--line)] pt-5">
+          <div>
             <p className="settings-kicker">Finance</p>
             <h2 className="text-[16px] font-semibold tracking-tight">Rates & limits</h2>
             <p className="mt-1 text-[12px] text-[var(--muted)]">LEV % paid on deposit approve and package invest.</p>
@@ -309,7 +390,7 @@ export default function Page() {
               />
             </label>
             <label className="text-[12px] text-[var(--muted)]">
-              Payout fee (USDT)
+              Payout fee ({s.walletMode === "usdt" ? "USDT" : s.walletMode === "dual" ? "unit" : "PKR"})
               <input
                 type="number"
                 value={s.payoutFee}

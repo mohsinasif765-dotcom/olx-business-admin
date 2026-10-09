@@ -60,6 +60,15 @@ export default function Page() {
       </section>
       <div className="mt-4 grid gap-3 lg:grid-cols-2">
         <section className="admin-card p-5">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 className="text-[13px] font-semibold text-[#9aa0ae]">Support</h2>
+            <Link href="/support" className="text-[12px] font-medium text-[#a5b4fc]">
+              Open inbox →
+            </Link>
+          </div>
+          <p className="mb-4 text-[13px] leading-6 text-[#9aa0ae]">
+            Member live chat (Trade FX style). Reply from Support inbox.
+          </p>
           <h2 className="mb-3 text-[13px] font-semibold text-[#9aa0ae]">Alerts</h2>
           {large.length ? (
             large.map((w) => (

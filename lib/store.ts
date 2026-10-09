@@ -141,34 +141,63 @@ export const DEFAULT_COINS: CoinRow[] = [
   { id: "aed", name: "AED", network: "UAE", min: "20", address: "", enabled: true, ...coinRail({}, "aed") },
   { id: "sar", name: "SAR", network: "Saudi Arabia", min: "20", address: "", enabled: true, ...coinRail({}, "sar") },
   { id: "inr", name: "INR", network: "India", min: "500", address: "", enabled: true, ...coinRail({}, "inr") },
+  { id: "bdt", name: "BDT", network: "Bangladesh", min: "500", address: "", enabled: true, ...coinRail({}, "bdt") },
   { id: "cny", name: "CNY", network: "China", min: "50", address: "", enabled: true, ...coinRail({}, "cny") },
 ];
 
 const LEGACY_CRYPTO = new Set(["usdc", "btc", "eth", "bnb"]);
+const COIN_ORDER = ["usdt", "pkr", "usd", "eur", "gbp", "aed", "sar", "inr", "bdt", "cny"];
+
+function repairPakistanCoin(row: CoinRow): CoinRow {
+  const network = String(row.network || "").toLowerCase();
+  const name = String(row.name || "").toUpperCase();
+  const id = String(row.id || "").toLowerCase();
+  if (network.includes("pakistan") && (name === "USD" || id === "usd" || id.includes("pakistan"))) {
+    return { ...row, id: "pkr", name: "PKR", network: "Pakistan", payKind: "bank", min: row.min || "1000" };
+  }
+  if (name === "PKR" || id === "pkr") {
+    return { ...row, id: "pkr", name: "PKR", network: "Pakistan", payKind: "bank" };
+  }
+  return row;
+}
+
+function ensureDefaultCoins(rows: CoinRow[]) {
+  const byId = new Map(rows.map((row) => [String(row.id).toLowerCase(), row]));
+  for (const def of DEFAULT_COINS) {
+    if (!byId.has(def.id)) byId.set(def.id, { ...def });
+  }
+  return [...byId.values()].sort((a, b) => {
+    const ai = COIN_ORDER.indexOf(String(a.id).toLowerCase());
+    const bi = COIN_ORDER.indexOf(String(b.id).toLowerCase());
+    return (ai === -1 ? 100 : ai) - (bi === -1 ? 100 : bi);
+  });
+}
 
 export function migrateCoins(rows: CoinRow[] | undefined | null): CoinRow[] {
   const list = Array.isArray(rows) ? rows : [];
   const ids = new Set(list.map((row) => String(row.id || "").toLowerCase()));
   const looksLegacy = ids.has("btc") && ids.has("eth") && ids.has("bnb");
   if (!list.length || looksLegacy) {
-    return DEFAULT_COINS.map((row) => {
-      const live = list.find((item) => String(item.id).toLowerCase() === row.id);
-      if (!live) return { ...row };
-      return {
-        ...row,
-        ...coinRail(live, row.id),
-        address: live.address || live.accountNumber || row.address,
-        min: live.min || row.min,
-        enabled: live.enabled !== false,
-        network: live.network || row.network,
-      };
-    });
+    return ensureDefaultCoins(
+      DEFAULT_COINS.map((row) => {
+        const live = list.find((item) => String(item.id).toLowerCase() === row.id);
+        if (!live) return { ...row };
+        return repairPakistanCoin({
+          ...row,
+          ...coinRail(live, row.id),
+          address: live.address || live.accountNumber || row.address,
+          min: live.min || row.min,
+          enabled: live.enabled !== false,
+          network: live.network || row.network,
+        });
+      })
+    );
   }
-  return list
+  const migrated = list
     .filter((row) => !LEGACY_CRYPTO.has(String(row.id || "").toLowerCase()))
     .map((row) => {
       const id = String(row.id || row.name || "coin").toLowerCase().replace(/[^a-z0-9]+/g, "-") || "coin";
-      return {
+      return repairPakistanCoin({
         id,
         name: String(row.name || "PKR").toUpperCase(),
         network: String(row.network || "Bank"),
@@ -176,8 +205,14 @@ export function migrateCoins(rows: CoinRow[] | undefined | null): CoinRow[] {
         address: String(row.address || row.accountNumber || ""),
         enabled: row.enabled !== false,
         ...coinRail(row, id),
-      };
+      });
     });
+  const unique = new Map<string, CoinRow>();
+  for (const row of migrated) {
+    const key = String(row.id).toLowerCase();
+    if (!unique.has(key)) unique.set(key, row);
+  }
+  return ensureDefaultCoins([...unique.values()]);
 }
 
 export type CmsPage = { slug: string; title: string; body: string };
@@ -215,6 +250,8 @@ export type AuditRow = {
   amount?: string;
 };
 
+export type WalletMode = "pkr" | "usdt" | "dual";
+
 export type Settings = {
   siteName: string;
   telegram: string;
@@ -232,6 +269,10 @@ export type Settings = {
   commissionL1: number;
   commissionL2: number;
   commissionL3: number;
+  /** Member app: PKR only | USDT only | both pay rails. */
+  walletMode: WalletMode;
+  /** Bank withdraw estimated PKR = amount × rate (Trade FX style). */
+  usdtToPkrRate: number;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -251,6 +292,8 @@ export const DEFAULT_SETTINGS: Settings = {
   commissionL1: 15,
   commissionL2: 3,
   commissionL3: 1,
+  walletMode: "pkr",
+  usdtToPkrRate: 280,
 };
 
 const KEY = "olx-admin-v9";
@@ -346,6 +389,13 @@ function normalizeVip(row: Partial<VipPlan> & { rebate?: string; hashpower?: str
   };
 }
 
+function normalizeWalletMode(value: unknown): WalletMode {
+  const mode = String(value || "pkr").toLowerCase();
+  if (mode === "usdt") return "usdt";
+  if (mode === "dual") return "dual";
+  return "pkr";
+}
+
 function normalizeSettings(
   raw: Partial<Settings> & { miningOn?: boolean; bep20Fee?: number; trc20Fee?: number },
   base: Settings
@@ -355,6 +405,8 @@ function normalizeSettings(
     ...raw,
     packagesOn: raw.packagesOn ?? raw.miningOn ?? base.packagesOn,
     payoutFee: Number(raw.payoutFee ?? raw.bep20Fee ?? base.payoutFee),
+    walletMode: normalizeWalletMode(raw.walletMode ?? base.walletMode),
+    usdtToPkrRate: Number(raw.usdtToPkrRate ?? base.usdtToPkrRate) || 280,
   };
 }
 

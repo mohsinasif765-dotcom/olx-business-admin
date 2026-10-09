@@ -36,6 +36,7 @@ const GROUPS = [
   {
     label: "System",
     items: [
+      { href: "/support", label: "Support", icon: "bolt" },
       { href: "/commands", label: "Commands", icon: "bolt" },
       { href: "/audit", label: "Audit log", icon: "log" },
       { href: "/settings", label: "Settings", icon: "gear" },
