@@ -5,6 +5,8 @@ export type WalletMode = "pkr" | "usdt" | "dual";
 export type SettingsRow = {
   siteName: string;
   telegram: string;
+  /** Member Home WhatsApp card link. */
+  whatsapp: string;
   defaultLang: string;
   registerOn: boolean;
   loginOn: boolean;
@@ -147,6 +149,7 @@ export function mapSettings(row: Record<string, unknown> | null | undefined): Se
   return {
     siteName: String(row.site_name || "OLX Business"),
     telegram: String(row.telegram || "https://t.me/olxbusiness_help"),
+    whatsapp: String(row.whatsapp || ""),
     defaultLang: String(row.default_lang || "en"),
     registerOn: on(row.register_on),
     loginOn: on(row.login_on),
@@ -190,6 +193,7 @@ export function settingsToRow(s: SettingsRow) {
     id: 1,
     site_name: s.siteName,
     telegram: s.telegram,
+    whatsapp: s.whatsapp || "",
     default_lang: s.defaultLang,
     register_on: s.registerOn,
     login_on: s.loginOn,

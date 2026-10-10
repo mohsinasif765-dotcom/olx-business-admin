@@ -255,6 +255,8 @@ export type WalletMode = "pkr" | "usdt" | "dual";
 export type Settings = {
   siteName: string;
   telegram: string;
+  /** Home WhatsApp card — wa.me / https://wa.me/92… */
+  whatsapp: string;
   defaultLang: string;
   registerOn: boolean;
   loginOn: boolean;
@@ -292,6 +294,7 @@ export type Settings = {
 export const DEFAULT_SETTINGS: Settings = {
   siteName: "OLX Business",
   telegram: "https://t.me/olxbusiness_help",
+  whatsapp: "",
   defaultLang: "en",
   registerOn: true,
   loginOn: true,
@@ -435,6 +438,7 @@ function normalizeSettings(
     walletMode: normalizeWalletMode(raw.walletMode ?? base.walletMode),
     usdtToPkrRate: Number(raw.usdtToPkrRate ?? base.usdtToPkrRate) || 280,
     usdtRateAuto: raw.usdtRateAuto === false ? false : true,
+    whatsapp: String(raw.whatsapp ?? base.whatsapp ?? "").trim(),
     aboutTagline: String(raw.aboutTagline ?? base.aboutTagline),
     aboutBody: String(raw.aboutBody ?? base.aboutBody),
     aboutStep1: String(raw.aboutStep1 ?? base.aboutStep1),

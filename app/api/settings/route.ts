@@ -14,6 +14,8 @@ function asSettings(row: SettingsRow | null): Settings {
   return {
     ...DEFAULT_SETTINGS,
     ...(row || {}),
+    telegram: String(row?.telegram ?? DEFAULT_SETTINGS.telegram),
+    whatsapp: String(row?.whatsapp ?? DEFAULT_SETTINGS.whatsapp ?? "").trim(),
     walletMode: asWalletMode(row?.walletMode ?? DEFAULT_SETTINGS.walletMode),
     usdtToPkrRate: Number(row?.usdtToPkrRate ?? DEFAULT_SETTINGS.usdtToPkrRate) || 280,
     usdtRateAuto: row?.usdtRateAuto !== false,
@@ -44,6 +46,7 @@ export async function PUT(request: Request) {
       ...body,
       siteName: String(body.siteName ?? current.siteName).trim() || "OLX Business",
       telegram: String(body.telegram ?? current.telegram).trim(),
+      whatsapp: String(body.whatsapp ?? current.whatsapp ?? "").trim(),
       defaultLang: String(body.defaultLang ?? current.defaultLang),
       maintenance: String(body.maintenance ?? current.maintenance),
       minWithdraw: Number(body.minWithdraw ?? current.minWithdraw),

@@ -348,6 +348,18 @@ export default function Page() {
                 />
               </label>
               <label className="block text-[12px] text-[var(--muted)]">
+                WhatsApp link (Home card)
+                <input
+                  value={s.whatsapp}
+                  onChange={(e) => setS({ ...s, whatsapp: e.target.value })}
+                  className="admin-input mt-1"
+                  placeholder="https://wa.me/923001234567"
+                />
+                <span className="mt-1 block text-[11px] leading-4">
+                  Replaces Cumulative Users on member Home. Use full wa.me URL or +92… number.
+                </span>
+              </label>
+              <label className="block text-[12px] text-[var(--muted)]">
                 Default language (new visitors)
                 <select
                   value={s.defaultLang}
