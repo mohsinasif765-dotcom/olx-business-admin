@@ -29,6 +29,105 @@ const TABS = [
 
 type TabId = (typeof TABS)[number]["id"];
 
+function UsdtPkrRateField({
+  s,
+  setS,
+  toast,
+}: {
+  s: Settings;
+  setS: (next: Settings) => void;
+  toast: (msg: string) => void;
+}) {
+  const [fxBusy, setFxBusy] = useState(false);
+  const [fxMeta, setFxMeta] = useState("");
+
+  async function pullLive(persist: boolean) {
+    setFxBusy(true);
+    try {
+      const qs = new URLSearchParams({ force: "1" });
+      if (persist) qs.set("persist", "1");
+      const res = await fetch(`/api/fx/usdt-pkr?${qs.toString()}`, { cache: "no-store" });
+      const data = (await res.json()) as {
+        ok?: boolean;
+        rate?: number;
+        source?: string;
+        at?: string;
+        error?: string;
+      };
+      if (!res.ok || !data.rate) {
+        toast(data.error || "Could not load live market rate");
+        return;
+      }
+      setS({
+        ...s,
+        usdtToPkrRate: Number(data.rate) || s.usdtToPkrRate,
+        usdtRateAuto: true,
+      });
+      setFxMeta(`${data.source || "market"}${data.at ? ` · ${data.at}` : ""}`);
+      toast(persist ? `Live rate saved: 1 USDT ≈ Rs ${data.rate}` : `Live rate: 1 USDT ≈ Rs ${data.rate}`);
+    } catch {
+      toast("Could not load live market rate");
+    } finally {
+      setFxBusy(false);
+    }
+  }
+
+  useEffect(() => {
+    if (s.usdtRateAuto === false) return;
+    void pullLive(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- pull once when auto is on / currency shown
+  }, []);
+
+  return (
+    <div className="space-y-2 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-[12px] font-medium text-white/85">USDT → PKR rate</p>
+        <label className="flex items-center gap-2 text-[11px] text-[var(--muted)]">
+          <input
+            type="checkbox"
+            checked={s.usdtRateAuto !== false}
+            onChange={(e) => setS({ ...s, usdtRateAuto: e.target.checked })}
+            className="rounded border-white/20"
+          />
+          Auto from live market
+        </label>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <input
+          type="number"
+          min={1}
+          step="0.01"
+          value={s.usdtToPkrRate}
+          onChange={(e) =>
+            setS({
+              ...s,
+              usdtToPkrRate: Number(e.target.value) || 280,
+              usdtRateAuto: false,
+            })
+          }
+          className="admin-input min-w-0 flex-1"
+          placeholder="280"
+          disabled={s.usdtRateAuto !== false && fxBusy}
+        />
+        <button
+          type="button"
+          className="admin-btn shrink-0 px-3 text-[12px]"
+          disabled={fxBusy}
+          onClick={() => void pullLive(true)}
+        >
+          {fxBusy ? "…" : "Refresh live"}
+        </button>
+      </div>
+      <p className="text-[11px] leading-4 text-[var(--muted)]">
+        {s.usdtRateAuto !== false
+          ? "Member app uses internet market rate (USDT→PKR). Saved value is fallback if feeds are down."
+          : "Manual rate locked. Bank withdraw estimated PKR = (amount − fee) × this rate."}
+        {fxMeta ? ` ${fxMeta}` : ""}
+      </p>
+    </div>
+  );
+}
+
 export default function Page() {
   const { toast, node } = useToast();
   const [tab, setTab] = useState<TabId>("brand");
@@ -290,7 +389,8 @@ export default function Page() {
           {tab === "currency" ? (
             <div className="admin-card space-y-4 p-4 sm:p-5">
               <p className="text-[13px] text-[var(--muted)]">
-                Controls Home balance labels and Bank withdraw PKR estimate. Deposit methods come from Coins.
+                Press <strong className="text-white/80">Save</strong> after choosing a mode. Member Home labels,
+                Fund methods, Withdraw tabs, and package currency all follow this setting (from Coins rails).
               </p>
               <div className="grid gap-2">
                 {(
@@ -308,7 +408,7 @@ export default function Page() {
                     {
                       id: "dual" as const,
                       title: "PKR + USDT",
-                      hint: "Members can fund and withdraw with either currency (same wallet balance ledger).",
+                      hint: "Home shows USDT and Rs together. Members can fund and withdraw with either rail.",
                     },
                   ] as const
                 ).map((opt) => {
@@ -340,26 +440,16 @@ export default function Page() {
               <p className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-[11px] leading-4 text-[var(--muted)]">
                 Preview: member home balances as{" "}
                 <strong className="text-white/80">
-                  {s.walletMode === "usdt" ? "USDT" : s.walletMode === "dual" ? "Rs (dual rails)" : "Rs"}
+                  {s.walletMode === "usdt"
+                    ? "USDT"
+                    : s.walletMode === "dual"
+                      ? "USDT + Rs"
+                      : "Rs"}
                 </strong>
                 .
               </p>
               {s.walletMode === "usdt" || s.walletMode === "dual" ? (
-                <label className="block text-[12px] text-[var(--muted)]">
-                  USDT → PKR rate
-                  <input
-                    type="number"
-                    min={1}
-                    step="0.01"
-                    value={s.usdtToPkrRate}
-                    onChange={(e) => setS({ ...s, usdtToPkrRate: Number(e.target.value) || 280 })}
-                    className="admin-input mt-1"
-                    placeholder="280"
-                  />
-                  <span className="mt-1 block text-[11px] leading-4">
-                    Bank withdraw estimated PKR = (amount − fee) × this rate.
-                  </span>
-                </label>
+                <UsdtPkrRateField s={s} setS={setS} toast={toast} />
               ) : null}
             </div>
           ) : null}

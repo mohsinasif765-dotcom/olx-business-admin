@@ -23,6 +23,8 @@ export type SettingsRow = {
   walletMode: WalletMode;
   /** Trade FX–style: Bank withdraw estimated PKR = USDT × rate. */
   usdtToPkrRate: number;
+  /** When true, member app uses live internet USDT→PKR; saved rate is fallback. */
+  usdtRateAuto: boolean;
   aboutTagline: string;
   aboutBody: string;
   aboutStep1: string;
@@ -164,6 +166,7 @@ export function mapSettings(row: Record<string, unknown> | null | undefined): Se
       row.usdt_to_pkr_rate == null || row.usdt_to_pkr_rate === ""
         ? 280
         : money(row.usdt_to_pkr_rate ?? row.usdtToPkrRate) || 280,
+    usdtRateAuto: row.usdt_rate_auto === false || row.usdtRateAuto === false ? false : true,
     aboutTagline: String(row.about_tagline ?? row.aboutTagline ?? ""),
     aboutBody: String(row.about_body ?? row.aboutBody ?? ""),
     aboutStep1: String(row.about_step1 ?? row.aboutStep1 ?? ""),
@@ -203,6 +206,7 @@ export function settingsToRow(s: SettingsRow) {
     commission_l3: s.commissionL3,
     wallet_mode: mapWalletMode(s.walletMode),
     usdt_to_pkr_rate: money(s.usdtToPkrRate) || 280,
+    usdt_rate_auto: s.usdtRateAuto !== false,
     about_tagline: s.aboutTagline,
     about_body: s.aboutBody,
     about_step1: s.aboutStep1,
@@ -296,9 +300,28 @@ export async function readSettings() {
   return mapSettings(data as Record<string, unknown> | null);
 }
 
+/** PostgREST: "Could not find the 'about_body' column of 'site_settings' in the schema cache" */
+function missingColumnFromError(message: string): string | null {
+  const m = String(message || "").match(/['`]([a-z0-9_]+)['`]\s+column/i);
+  if (m?.[1]) return m[1];
+  const m2 = String(message || "").match(/column\s+['`]?([a-z0-9_]+)['`]?/i);
+  return m2?.[1] || null;
+}
+
 export async function writeSettings(s: SettingsRow) {
-  const { error } = await db().from("site_settings").upsert(settingsToRow(s));
-  if (error) throw error;
+  let payload: Record<string, unknown> = { ...settingsToRow(s) };
+  // Core fields we never strip — if these fail, surface the real error.
+  const required = new Set(["id", "site_name", "updated_at"]);
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const { error } = await db().from("site_settings").upsert(payload);
+    if (!error) return;
+    const col = missingColumnFromError(error.message || "");
+    if (!col || required.has(col) || !(col in payload)) throw error;
+    const next = { ...payload };
+    delete next[col];
+    payload = next;
+  }
+  throw new Error("Could not save settings — too many missing columns. Run scripts/site-settings-migrate.sql");
 }
 
 export async function readAdminAuth() {

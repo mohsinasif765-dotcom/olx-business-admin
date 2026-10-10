@@ -273,6 +273,8 @@ export type Settings = {
   walletMode: WalletMode;
   /** Bank withdraw estimated PKR = amount × rate (Trade FX style). */
   usdtToPkrRate: number;
+  /** Pull USDT→PKR from live market feeds; saved rate is offline fallback. */
+  usdtRateAuto: boolean;
   /** About Us page (member /about) — editable from Settings. */
   aboutTagline: string;
   aboutBody: string;
@@ -306,6 +308,7 @@ export const DEFAULT_SETTINGS: Settings = {
   commissionL3: 1,
   walletMode: "pkr",
   usdtToPkrRate: 280,
+  usdtRateAuto: true,
   aboutTagline: "Car investment membership, built for clarity and control.",
   aboutBody:
     "OLX Business is a membership platform for structured vehicle investment. Members fund through approved channels, select a new or certified used car package, and receive returns according to the plan term — with wallet, team, and support in one place.",
@@ -431,6 +434,7 @@ function normalizeSettings(
     payoutFee: Number(raw.payoutFee ?? raw.bep20Fee ?? base.payoutFee),
     walletMode: normalizeWalletMode(raw.walletMode ?? base.walletMode),
     usdtToPkrRate: Number(raw.usdtToPkrRate ?? base.usdtToPkrRate) || 280,
+    usdtRateAuto: raw.usdtRateAuto === false ? false : true,
     aboutTagline: String(raw.aboutTagline ?? base.aboutTagline),
     aboutBody: String(raw.aboutBody ?? base.aboutBody),
     aboutStep1: String(raw.aboutStep1 ?? base.aboutStep1),

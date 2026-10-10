@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { readSettings, writeSettings, type SettingsRow, type WalletMode } from "@/lib/db-tables";
+import { fetchLiveUsdtPkrRate } from "@/lib/live-fx";
 import { DEFAULT_SETTINGS, type Settings } from "@/lib/store";
 
 function asWalletMode(value: unknown): WalletMode {
@@ -15,6 +16,7 @@ function asSettings(row: SettingsRow | null): Settings {
     ...(row || {}),
     walletMode: asWalletMode(row?.walletMode ?? DEFAULT_SETTINGS.walletMode),
     usdtToPkrRate: Number(row?.usdtToPkrRate ?? DEFAULT_SETTINGS.usdtToPkrRate) || 280,
+    usdtRateAuto: row?.usdtRateAuto !== false,
   };
 }
 
@@ -52,6 +54,7 @@ export async function PUT(request: Request) {
       commissionL3: Number(body.commissionL3 ?? current.commissionL3),
       walletMode: asWalletMode(body.walletMode ?? current.walletMode),
       usdtToPkrRate: Number(body.usdtToPkrRate ?? current.usdtToPkrRate) || 280,
+      usdtRateAuto: body.usdtRateAuto === false ? false : true,
       aboutTagline: String(body.aboutTagline ?? current.aboutTagline),
       aboutBody: String(body.aboutBody ?? current.aboutBody),
       aboutStep1: String(body.aboutStep1 ?? current.aboutStep1),
@@ -64,15 +67,22 @@ export async function PUT(request: Request) {
       companyRegDate: String(body.companyRegDate ?? current.companyRegDate).trim(),
       companyIssued: String(body.companyIssued ?? current.companyIssued).trim(),
     };
+    if (next.usdtRateAuto !== false) {
+      const live = await fetchLiveUsdtPkrRate(true);
+      if (live?.rate) next.usdtToPkrRate = live.rate;
+    }
     await writeSettings(next);
     return NextResponse.json({ ok: true, settings: next });
   } catch (error) {
-    const message =
+    let message =
       error && typeof error === "object" && "message" in error
         ? String((error as { message: string }).message)
         : error instanceof Error
           ? error.message
           : "Zuvo write failed";
+    if (/could not find the .+ column/i.test(message)) {
+      message = `${message} — run scripts/site-settings-migrate.sql in Zuvo, then retry Save.`;
+    }
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
