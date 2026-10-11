@@ -14,6 +14,7 @@ export default function Page() {
   const [network, setNetwork] = useState("");
   const [min, setMin] = useState("10");
   const [address, setAddress] = useState("");
+  const [usdtRate, setUsdtRate] = useState("1");
 
   async function load() {
     const res = await fetch("/api/pay-rails", { cache: "no-store" });
@@ -81,7 +82,12 @@ export default function Page() {
             toast("That currency already exists");
             return;
           }
-          const crypto = id === "usdt";
+          const crypto = id === "usdt" || id === "usd";
+          const rateN = Number(usdtRate);
+          if (!crypto && (!(rateN > 0) || !Number.isFinite(rateN))) {
+            toast("Set 1 USDT = how many units of this currency");
+            return;
+          }
           void saveCoin(
             {
               id,
@@ -90,7 +96,7 @@ export default function Page() {
               min: min.trim() || "10",
               address: address.trim(),
               enabled: true,
-              payKind: crypto ? "crypto" : "bank",
+              payKind: id === "usdt" ? "crypto" : "bank",
               bankName: "",
               accountName: "",
               accountNumber: crypto ? "" : address.trim(),
@@ -98,6 +104,7 @@ export default function Page() {
               swift: "",
               branch: "",
               instructions: "",
+              usdtRate: crypto ? 1 : rateN,
             },
             "Saved to pay_rails"
           );
@@ -105,11 +112,19 @@ export default function Page() {
           setNetwork("");
           setMin("10");
           setAddress("");
+          setUsdtRate("1");
         }}
       >
         <input value={name} onChange={(e) => setName(e.target.value)} className="admin-input" placeholder="Currency e.g. PKR" />
         <input value={network} onChange={(e) => setNetwork(e.target.value)} className="admin-input" placeholder="Country / network e.g. Pakistan" />
         <input value={min} onChange={(e) => setMin(e.target.value)} className="admin-input" placeholder="Min fund" />
+        <input
+          value={usdtRate}
+          onChange={(e) => setUsdtRate(e.target.value)}
+          className="admin-input"
+          placeholder="1 USDT = ? (e.g. 280 for PKR)"
+          inputMode="decimal"
+        />
         <input
           value={address}
           onChange={(e) => setAddress(e.target.value)}
@@ -200,6 +215,35 @@ export default function Page() {
                       if (v !== row.min) void patch(row.id, { min: v }, "Saved");
                     }}
                   />
+                </label>
+                <label className="block text-[12px] text-white/50 sm:col-span-2">
+                  1 USDT = (units of {row.name || row.id})
+                  <input
+                    key={`${row.id}-rate-${row.usdtRate ?? 0}`}
+                    defaultValue={
+                      Number(row.usdtRate) > 0
+                        ? String(row.usdtRate)
+                        : crypto || row.id === "usd"
+                          ? "1"
+                          : ""
+                    }
+                    className="admin-input mt-1"
+                    placeholder="e.g. 280 for PKR, 3.67 for AED"
+                    inputMode="decimal"
+                    disabled={busy}
+                    onBlur={(e) => {
+                      const v = Number(e.target.value);
+                      const prev = Number(row.usdtRate) || 0;
+                      if (!Number.isFinite(v) || v <= 0) {
+                        toast("Rate must be greater than 0");
+                        return;
+                      }
+                      if (v !== prev) void patch(row.id, { usdtRate: v }, "USDT rate saved");
+                    }}
+                  />
+                  <span className="mt-1 block text-[11px] text-white/35">
+                    Member deposit ÷ this rate = USDT credited on approve
+                  </span>
                 </label>
               </div>
               {crypto ? (

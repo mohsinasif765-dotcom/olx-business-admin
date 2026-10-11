@@ -11,6 +11,7 @@ function normalize(row: Partial<CoinRow> & { id?: string }): CoinRow | null {
   if (!id || !row.name?.trim()) return null;
   const crypto = row.payKind === "crypto" || id === "usdt";
   const accountNumber = String(row.accountNumber || row.address || "").trim();
+  const rate = Number(row.usdtRate);
   return {
     id,
     name: String(row.name).trim().toUpperCase(),
@@ -26,6 +27,12 @@ function normalize(row: Partial<CoinRow> & { id?: string }): CoinRow | null {
     swift: String(row.swift || "").trim(),
     branch: String(row.branch || "").trim(),
     instructions: String(row.instructions || "").trim(),
+    usdtRate:
+      Number.isFinite(rate) && rate > 0
+        ? rate
+        : id === "usdt" || id === "usd"
+          ? 1
+          : 0,
   };
 }
 

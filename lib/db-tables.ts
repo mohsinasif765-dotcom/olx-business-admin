@@ -55,6 +55,8 @@ export type CoinRow = {
   swift?: string;
   branch?: string;
   instructions?: string;
+  /** 1 USDT = usdtRate units of this rail (0 = unset). */
+  usdtRate?: number;
 };
 
 export type CmsPage = { slug: string; title: string; body: string };
@@ -242,6 +244,7 @@ export function mapCoin(row: Record<string, unknown>): CoinRow {
     swift: String(row.swift || ""),
     branch: String(row.branch || ""),
     instructions: String(row.instructions || ""),
+    usdtRate: money(row.usdt_rate ?? row.usdtRate),
   };
 }
 
@@ -261,6 +264,7 @@ export function coinToRow(c: CoinRow) {
     swift: c.swift || "",
     branch: c.branch || "",
     instructions: c.instructions || "",
+    usdt_rate: money(c.usdtRate),
   };
 }
 
@@ -351,8 +355,17 @@ export async function writeCoins(rows: CoinRow[]) {
 }
 
 export async function upsertCoin(row: CoinRow) {
-  const { error } = await db().from("pay_rails").upsert(coinToRow(row));
-  if (error) throw error;
+  const full = coinToRow(row);
+  const { error } = await db().from("pay_rails").upsert(full);
+  if (!error) return;
+  const msg = String(error.message || "");
+  if (msg.includes("usdt_rate")) {
+    const { usdt_rate: _u, ...rest } = full;
+    const { error: retry } = await db().from("pay_rails").upsert(rest);
+    if (retry) throw retry;
+    return;
+  }
+  throw error;
 }
 
 export async function deleteCoin(id: string) {

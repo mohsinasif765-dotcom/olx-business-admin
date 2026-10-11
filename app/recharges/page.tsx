@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AddPanel } from "@/components/AddPanel";
 import { AdminShell } from "@/components/AdminShell";
 import { ConfirmBar, useToast } from "@/components/Feedback";
+import { fiatAmountToUsdt, formatDepositCreditNote } from "@/lib/deposit-fx";
 import { slipHref } from "@/lib/slip-href";
-import type { OrderRow } from "@/lib/store";
+import type { CoinRow, OrderRow } from "@/lib/store";
 
 export default function Page() {
   const { toast, node } = useToast();
@@ -19,6 +20,8 @@ export default function Page() {
   const [amount, setAmount] = useState("");
   const [network, setNetwork] = useState("PKR");
   const [manualNote, setManualNote] = useState("");
+  const [usdtToPkrRate, setUsdtToPkrRate] = useState(280);
+  const [rails, setRails] = useState<CoinRow[]>([]);
 
   async function load() {
     const res = await fetch("/api/recharges", { cache: "no-store" });
@@ -32,7 +35,38 @@ export default function Page() {
 
   useEffect(() => {
     void load();
+    void fetch("/api/settings", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { settings?: { usdtToPkrRate?: number }; usdtToPkrRate?: number } | null) => {
+        const rate = Number(data?.settings?.usdtToPkrRate ?? data?.usdtToPkrRate) || 280;
+        setUsdtToPkrRate(rate);
+      })
+      .catch(() => {});
+    void fetch("/api/pay-rails", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { coins?: CoinRow[] } | null) => {
+        setRails(Array.isArray(data?.coins) ? data.coins : []);
+      })
+      .catch(() => {});
   }, []);
+
+  function creditPreview(row: OrderRow) {
+    try {
+      return fiatAmountToUsdt(row.amount, row.network, usdtToPkrRate, rails);
+    } catch {
+      return null;
+    }
+  }
+
+  const approvePreview = useMemo(() => {
+    if (!pending || action !== "paid") return "";
+    try {
+      const fx = fiatAmountToUsdt(pending.amount, pending.network, usdtToPkrRate, rails);
+      return formatDepositCreditNote(fx);
+    } catch (err) {
+      return err instanceof Error ? err.message : "Cannot convert to USDT";
+    }
+  }, [pending, action, usdtToPkrRate, rails]);
 
   return (
     <AdminShell title="Recharges">
@@ -84,7 +118,11 @@ export default function Page() {
       </AddPanel>
       {pending && action ? (
         <ConfirmBar
-          text={`${action === "paid" ? "Approve and credit invest" : "Reject"} ${pending.amount} for ${pending.account}?`}
+          text={
+            action === "paid"
+              ? `Approve ${pending.amount} ${pending.network} for ${pending.account}? ${approvePreview}`
+              : `Reject ${pending.amount} ${pending.network} for ${pending.account}?`
+          }
           onYes={() => {
             const act = action === "paid" ? "approve_recharge" : "reject_recharge";
             setBusy(true);
@@ -94,13 +132,26 @@ export default function Page() {
               body: JSON.stringify({ action: act, id: pending.id, note }),
             })
               .then(async (res) => {
-                const data = (await res.json()) as { error?: string };
+                const data = (await res.json()) as {
+                  error?: string;
+                  creditedUsdt?: number;
+                  code?: string;
+                  railAmount?: number;
+                };
                 if (!res.ok) {
                   toast(data.error || "Update failed");
                   return;
                 }
                 await load();
-                toast(action === "paid" ? "Approved — invest credited" : "Rejected");
+                if (action === "paid") {
+                  toast(
+                    data.creditedUsdt != null
+                      ? `Approved — credited ${data.creditedUsdt} USDT (from ${data.railAmount} ${data.code})`
+                      : "Approved — invest credited",
+                  );
+                } else {
+                  toast("Rejected");
+                }
               })
               .finally(() => {
                 setBusy(false);
@@ -120,8 +171,8 @@ export default function Page() {
           <thead>
             <tr>
               <th>Account</th>
-              <th>Amount</th>
-              <th>Network</th>
+              <th>Paid</th>
+              <th>≈ USDT credit</th>
               <th>Slip / bill</th>
               <th>Status</th>
               <th>Time</th>
@@ -138,11 +189,20 @@ export default function Page() {
             ) : (
               rows.map((row) => {
                 const href = slipHref(row.slipUrl || "");
+                const est = creditPreview(row);
                 return (
                   <tr key={row.id}>
                     <td>{row.account}</td>
-                    <td>{row.amount}</td>
-                    <td>{row.network}</td>
+                    <td>
+                      {row.amount} {row.network}
+                    </td>
+                    <td className="text-[#9ee7ff]">
+                      {est
+                        ? `${est.usdt} USDT`
+                        : row.status === "pending"
+                          ? "Set rail rate"
+                          : "—"}
+                    </td>
                     <td>
                       {href ? (
                         <button

@@ -116,6 +116,8 @@ export type CoinRow = {
   swift?: string;
   branch?: string;
   instructions?: string;
+  /** 1 USDT = usdtRate units of this rail. */
+  usdtRate?: number;
 };
 
 function coinRail(row: Partial<CoinRow>, id: string) {
@@ -197,6 +199,7 @@ export function migrateCoins(rows: CoinRow[] | undefined | null): CoinRow[] {
     .filter((row) => !LEGACY_CRYPTO.has(String(row.id || "").toLowerCase()))
     .map((row) => {
       const id = String(row.id || row.name || "coin").toLowerCase().replace(/[^a-z0-9]+/g, "-") || "coin";
+      const rate = Number(row.usdtRate);
       return repairPakistanCoin({
         id,
         name: String(row.name || "PKR").toUpperCase(),
@@ -204,6 +207,7 @@ export function migrateCoins(rows: CoinRow[] | undefined | null): CoinRow[] {
         min: String(row.min || "10"),
         address: String(row.address || row.accountNumber || ""),
         enabled: row.enabled !== false,
+        usdtRate: Number.isFinite(rate) && rate > 0 ? rate : id === "usdt" || id === "usd" ? 1 : 0,
         ...coinRail(row, id),
       });
     });
