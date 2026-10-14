@@ -415,7 +415,7 @@ export default function Page() {
                     {
                       id: "usdt" as const,
                       title: "USDT only",
-                      hint: "Crypto wallet rails only. Home shows USDT. PKR bank rails hidden from members.",
+                      hint: "Home / wallet always USDT. Members can still pay PKR or bank; approve converts to USDT and adds that amount.",
                     },
                     {
                       id: "dual" as const,
@@ -453,7 +453,7 @@ export default function Page() {
                 Preview: member home balances as{" "}
                 <strong className="text-white/80">
                   {s.walletMode === "usdt"
-                    ? "USDT"
+                    ? "USDT (PKR deposits convert → USDT)"
                     : s.walletMode === "dual"
                       ? "USDT + Rs"
                       : "Rs"}
