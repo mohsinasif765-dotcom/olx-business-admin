@@ -4,9 +4,17 @@ import { useEffect, useMemo, useState } from "react";
 import { AddPanel } from "@/components/AddPanel";
 import { AdminShell } from "@/components/AdminShell";
 import { ConfirmBar, useToast } from "@/components/Feedback";
-import { fiatAmountToUsdt, formatDepositCreditNote } from "@/lib/deposit-fx";
+import { fiatAmountToUsdt, formatDepositCreditNote, type DepositFxResult } from "@/lib/deposit-fx";
 import { slipHref } from "@/lib/slip-href";
 import type { CoinRow, OrderRow } from "@/lib/store";
+
+type StatusGroup = "pending" | "paid" | "rejected";
+
+function statusOf(row: OrderRow): StatusGroup {
+  if (row.status === "paid") return "paid";
+  if (row.status === "rejected") return "rejected";
+  return "pending";
+}
 
 export default function Page() {
   const { toast, node } = useToast();
@@ -50,7 +58,7 @@ export default function Page() {
       .catch(() => {});
   }, []);
 
-  function creditPreview(row: OrderRow) {
+  function creditPreview(row: OrderRow): DepositFxResult | null {
     try {
       return fiatAmountToUsdt(row.amount, row.network, usdtToPkrRate, rails);
     } catch {
@@ -68,12 +76,146 @@ export default function Page() {
     }
   }, [pending, action, usdtToPkrRate, rails]);
 
+  const pendingRows = useMemo(() => rows.filter((r) => statusOf(r) === "pending"), [rows]);
+  const paidRows = useMemo(() => rows.filter((r) => statusOf(r) === "paid"), [rows]);
+  const rejectedRows = useMemo(() => rows.filter((r) => statusOf(r) === "rejected"), [rows]);
+
+  function renderTable(
+    title: string,
+    hint: string,
+    list: OrderRow[],
+    empty: string,
+    showActions: boolean,
+  ) {
+    return (
+      <div className="admin-card overflow-x-auto p-4">
+        <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <h2 className="text-[15px] font-semibold text-white/90">{title}</h2>
+            <p className="mt-0.5 text-[12px] text-white/45">{hint}</p>
+          </div>
+          <span className="rounded-full bg-white/8 px-2.5 py-1 text-[11px] text-white/55">
+            {list.length}
+          </span>
+        </div>
+        <table className="admin-table">
+          <thead>
+            <tr>
+              <th>Account</th>
+              <th>Paid</th>
+              <th>≈ USDT credit</th>
+              <th>Slip / bill</th>
+              <th>Status</th>
+              <th>Time</th>
+              {showActions ? <th /> : null}
+            </tr>
+          </thead>
+          <tbody>
+            {list.length === 0 ? (
+              <tr>
+                <td colSpan={showActions ? 7 : 6} className="py-8 text-center text-white/40">
+                  {empty}
+                </td>
+              </tr>
+            ) : (
+              list.map((row) => {
+                const href = slipHref(row.slipUrl || "");
+                const est = creditPreview(row);
+                return (
+                  <tr key={row.id}>
+                    <td>{row.account}</td>
+                    <td>
+                      {row.amount} {row.network}
+                    </td>
+                    <td className="text-[#9ee7ff]">
+                      {est
+                        ? `${est.usdt} USDT`
+                        : row.status === "pending"
+                          ? "Set rail rate"
+                          : "—"}
+                    </td>
+                    <td>
+                      {href ? (
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-2 text-[#9ec6ff]"
+                          onClick={() => setPreview(href)}
+                        >
+                          <img
+                            src={href}
+                            alt=""
+                            className="h-12 w-12 rounded-md border border-white/10 object-cover"
+                          />
+                          Check slip
+                        </button>
+                      ) : (
+                        <span className="text-white/35">No slip</span>
+                      )}
+                    </td>
+                    <td>
+                      <span
+                        className={`pill ${
+                          row.status === "paid"
+                            ? "pill-ok"
+                            : row.status === "pending"
+                              ? "pill-wait"
+                              : "pill-bad"
+                        }`}
+                      >
+                        {row.status}
+                      </span>
+                    </td>
+                    <td className="text-white/55">{row.at}</td>
+                    {showActions ? (
+                      <td className="space-x-2">
+                        {row.status === "pending" ? (
+                          <>
+                            <button
+                              type="button"
+                              className="ghost-btn"
+                              disabled={busy}
+                              onClick={() => {
+                                setPending(row);
+                                setAction("paid");
+                              }}
+                            >
+                              Approve
+                            </button>
+                            <button
+                              type="button"
+                              className="ghost-btn"
+                              disabled={busy}
+                              onClick={() => {
+                                setPending(row);
+                                setAction("rejected");
+                              }}
+                            >
+                              Reject
+                            </button>
+                          </>
+                        ) : null}
+                      </td>
+                    ) : null}
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
   return (
     <AdminShell title="Recharges">
       {node}
       <p className="mb-4 max-w-3xl text-[13px] leading-6 text-white/50">
-        Member slips land in the table. <strong className="text-white/70">Add recharge</strong> is only if someone paid
-        outside the app — you log it, then still Approve to credit the wallet.
+        Tickets stay in one DB table with status. Below they are split:{" "}
+        <strong className="text-white/70">Pending</strong>,{" "}
+        <strong className="text-white/70">Paid</strong>,{" "}
+        <strong className="text-white/70">Rejected</strong>.{" "}
+        <strong className="text-white/70">Add recharge</strong> is only if someone paid outside the app —
+        log it, then Approve to credit.
       </p>
       <AddPanel
         title="Add recharge"
@@ -166,106 +308,31 @@ export default function Page() {
           }}
         />
       ) : null}
-      <div className="admin-card overflow-x-auto p-4">
-        <table className="admin-table">
-          <thead>
-            <tr>
-              <th>Account</th>
-              <th>Paid</th>
-              <th>≈ USDT credit</th>
-              <th>Slip / bill</th>
-              <th>Status</th>
-              <th>Time</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {rows.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="py-8 text-center text-white/40">
-                  No deposit tickets yet. When a member uploads a slip on Fund wallet, it shows here.
-                </td>
-              </tr>
-            ) : (
-              rows.map((row) => {
-                const href = slipHref(row.slipUrl || "");
-                const est = creditPreview(row);
-                return (
-                  <tr key={row.id}>
-                    <td>{row.account}</td>
-                    <td>
-                      {row.amount} {row.network}
-                    </td>
-                    <td className="text-[#9ee7ff]">
-                      {est
-                        ? `${est.usdt} USDT`
-                        : row.status === "pending"
-                          ? "Set rail rate"
-                          : "—"}
-                    </td>
-                    <td>
-                      {href ? (
-                        <button
-                          type="button"
-                          className="inline-flex items-center gap-2 text-[#9ec6ff]"
-                          onClick={() => setPreview(href)}
-                        >
-                          <img
-                            src={href}
-                            alt=""
-                            className="h-12 w-12 rounded-md border border-white/10 object-cover"
-                          />
-                          Check slip
-                        </button>
-                      ) : (
-                        <span className="text-white/35">No slip</span>
-                      )}
-                    </td>
-                    <td>
-                      <span
-                        className={`pill ${
-                          row.status === "paid" ? "pill-ok" : row.status === "pending" ? "pill-wait" : "pill-bad"
-                        }`}
-                      >
-                        {row.status}
-                      </span>
-                    </td>
-                    <td className="text-white/55">{row.at}</td>
-                    <td className="space-x-2">
-                      {row.status === "pending" ? (
-                        <>
-                          <button
-                            type="button"
-                            className="ghost-btn"
-                            disabled={busy}
-                            onClick={() => {
-                              setPending(row);
-                              setAction("paid");
-                            }}
-                          >
-                            Approve
-                          </button>
-                          <button
-                            type="button"
-                            className="ghost-btn"
-                            disabled={busy}
-                            onClick={() => {
-                              setPending(row);
-                              setAction("rejected");
-                            }}
-                          >
-                            Reject
-                          </button>
-                        </>
-                      ) : null}
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+
+      <div className="space-y-5">
+        {renderTable(
+          "Pending",
+          "Waiting for Approve / Reject. Approve credits USDT after FX convert.",
+          pendingRows,
+          "No pending tickets.",
+          true,
+        )}
+        {renderTable(
+          "Paid",
+          "Approved deposits — invest wallet already credited.",
+          paidRows,
+          "No paid deposits yet.",
+          false,
+        )}
+        {renderTable(
+          "Rejected",
+          "Rejected tickets — no wallet credit.",
+          rejectedRows,
+          "No rejected tickets.",
+          false,
+        )}
       </div>
+
       {pending ? (
         <input
           value={note}

@@ -52,17 +52,28 @@ export async function POST(request: Request) {
       }
 
       const [settings, coins] = await Promise.all([readSettings(), readCoins()]);
+      const pkrRate = Number(settings?.usdtToPkrRate) || 280;
       let credit;
       try {
-        credit = fiatAmountToUsdt(
-          row.amount,
-          row.network,
-          Number(settings?.usdtToPkrRate) || 280,
-          coins,
-        );
+        credit = fiatAmountToUsdt(row.amount, row.network, pkrRate, coins);
       } catch (err) {
         const message = err instanceof Error ? err.message : "FX convert failed";
         return NextResponse.json({ error: message }, { status: 400 });
+      }
+
+      // Safety: never credit raw PKR-sized amounts as if they were USDT.
+      if (
+        credit.code !== "USDT" &&
+        credit.code !== "USD" &&
+        credit.usdt >= Number(row.amount) * 0.5 &&
+        Number(row.amount) >= 50
+      ) {
+        return NextResponse.json(
+          {
+            error: `FX looks wrong (${row.amount} ${credit.code} → ${credit.usdt} USDT). Check rail rate.`,
+          },
+          { status: 400 },
+        );
       }
 
       const creditNote = [formatDepositCreditNote(credit), note].filter(Boolean).join(" · ");
